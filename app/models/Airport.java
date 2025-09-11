@@ -6,6 +6,7 @@ import com.avaje.ebean.RawSql;
 import com.avaje.ebean.RawSqlBuilder;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import play.db.ebean.Model;
 import play.libs.Json;
@@ -13,7 +14,10 @@ import redis.clients.jedis.Jedis;
 
 import javax.persistence.*;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by mahendra-singh on 25/6/14.
@@ -304,6 +308,8 @@ public class Airport extends Model implements Serializable {
 		this.classification = classification;
 	}
 
+	static org.slf4j.Logger logger = LoggerFactory.getLogger("gds");
+
 	public static Finder<Integer, Airport> getFind() {
 		return find;
 	}
@@ -394,4 +400,25 @@ public class Airport extends Model implements Serializable {
 
 		return airportList;
 	}
+
+	public static Map<String,List<String>> findIataCodeByCityCodeMap(String cityCode) {
+
+		Map<String,List<String>> cityCodeIataCodeMap = new LinkedHashMap<>();
+		List<String> iataCodeList = new ArrayList<>();
+		try {
+			List<Airport> airports = Airport.find.where().eq("city_code", cityCode).findList();
+
+			for (Airport airport : airports) {
+				iataCodeList.add(airport.getIata_code());
+			}
+
+			cityCodeIataCodeMap.put(cityCode,iataCodeList);
+			return cityCodeIataCodeMap;
+		} catch (Exception e) {
+			logger.debug("Error occured at findIataCodeByCityCodeMap",e);
+			return null;
+		}
+
+	}
+
 }

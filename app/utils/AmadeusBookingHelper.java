@@ -14,6 +14,7 @@ import com.amadeus.xml.tpcbrr_12_4_1a.FarePricePNRWithBookingClassReply.FareList
 import com.amadeus.xml.tpcbrr_12_4_1a.FarePricePNRWithBookingClassReply.FareList.TaxInformation;
 import com.amadeus.xml.tpcbrr_12_4_1a.ItemNumberIdentificationType;
 import com.amadeus.xml.tpcbrr_12_4_1a.ItemNumberType;
+import com.amadeus.xml.tpcbrr_12_4_1a.ReferenceInformationTypeI;
 import com.amadeus.xml.tpcbrr_12_4_1a.TravelProductInformationTypeI;
 import com.amadeus.xml.ttstrr_13_1_1a.*;
 import com.amadeus.xml.ttstrr_13_1_1a.ReferencingDetailsTypeI;
@@ -1912,6 +1913,27 @@ public class AmadeusBookingHelper {
                 if (pricingGroup.getFareInfoGroup() != null) {
                     FareInformativePricingWithoutPNRReply.MainGroup.PricingGroupLevelGroup.FareInfoGroup fareInfo = pricingGroup.getFareInfoGroup();
 
+                    List<FareInformativePricingWithoutPNRReply.MainGroup.PricingGroupLevelGroup.FareInfoGroup.SegmentLevelGroup> segmentLevelGroupList = fareInfo.getSegmentLevelGroup();
+                    Set<String> segmentList = new HashSet<>();
+
+                    if (segmentLevelGroupList != null && !segmentLevelGroupList.isEmpty()) {
+
+                        for (FareInformativePricingWithoutPNRReply.MainGroup.PricingGroupLevelGroup.FareInfoGroup.SegmentLevelGroup segmentLevelGroup : segmentLevelGroupList) {
+                            if (segmentLevelGroup != null) {
+                                FareInformativePricingWithoutPNRReply.MainGroup.PricingGroupLevelGroup.FareInfoGroup.SegmentLevelGroup.SegmentInformation segmentInformation = segmentLevelGroup.getSegmentInformation();
+                                if (segmentInformation != null) {
+                                    String origin = segmentInformation.getBoardPointDetails().getTrueLocationId();
+                                    String destination = segmentInformation.getOffpointDetails().getTrueLocationId();
+                                    if (origin != null && destination != null) {
+                                        segmentList.add(origin);
+                                        segmentList.add(destination);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+
                     List<FareInformativePricingWithoutPNRReply.MainGroup.PricingGroupLevelGroup.FareInfoGroup.FareComponentDetailsGroup> fareComponents = fareInfo.getFareComponentDetailsGroup();
 
                     if (fareComponents != null) {
@@ -1934,11 +1956,39 @@ public class AmadeusBookingHelper {
 
                                             if (marketFareComponent.getBoardPointDetails() != null && marketFareComponent.getBoardPointDetails().getTrueLocationId() != null) {
                                                 boardPoint = marketFareComponent.getBoardPointDetails().getTrueLocationId();
+                                                if (boardPoint != null) {
+                                                    Map<String, List<String>> iataCodeByCityCode = Airport.findIataCodeByCityCodeMap(boardPoint);
+                                                    if (iataCodeByCityCode != null && !iataCodeByCityCode.isEmpty()) {
+                                                        List<String> iataCodes = iataCodeByCityCode.get(boardPoint);
+                                                        if (iataCodes != null && !iataCodes.isEmpty()) {
+                                                            for (String segment : segmentList) {
+                                                                if (iataCodes.contains(segment)) {
+                                                                    boardPoint = segment;
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                             }
 
                                             if (marketFareComponent.getOffpointDetails() != null && marketFareComponent.getOffpointDetails().getTrueLocationId() != null) {
                                                 offPoint = marketFareComponent.getOffpointDetails().getTrueLocationId();
+                                                if (offPoint != null) {
+                                                    Map<String, List<String>> iataCodeByCityCode = Airport.findIataCodeByCityCodeMap(offPoint);
+                                                    if (iataCodeByCityCode != null && !iataCodeByCityCode.isEmpty()) {
+                                                        List<String> iataCodes = iataCodeByCityCode.get(offPoint);
+                                                        if (iataCodes != null && !iataCodes.isEmpty()) {
+                                                            for (String segment : segmentList) {
+                                                                if (iataCodes.contains(segment)) {
+                                                                    offPoint = segment;
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+                                                    }}
                                             }
+
 
                                             location.append(boardPoint).append("-").append(offPoint);
                                         }
@@ -1962,7 +2012,7 @@ public class AmadeusBookingHelper {
         }
     }
 
-    public static Map<String, String> getFareComponentMapFromPricePNRWithBookingClass(FarePricePNRWithBookingClassReply pricePNRWithBookingClassReply) {
+    public static Map<String, String> getFareComponentMapFromPricePNRWithBookingClass(FarePricePNRWithBookingClassReply pricePNRWithBookingClassReply,List<Journey> journeyList) {
 
         Map<String, String> fareComponentsMap = new LinkedHashMap<>();
 
@@ -1972,42 +2022,89 @@ public class AmadeusBookingHelper {
                 List<FarePricePNRWithBookingClassReply.FareList> fareLists = pricePNRWithBookingClassReply.getFareList();
 
                 for (FarePricePNRWithBookingClassReply.FareList fareList : fareLists) {
-                    if (fareList.getFareComponentDetailsGroup() != null) {
-                        List<FareComponentDetailsType> fareComponents = fareList.getFareComponentDetailsGroup();
+                        Set<String> segmentList = new HashSet<>();
 
-                        for (FareComponentDetailsType fareComponent : fareComponents) {
-                            ItemNumberType fareComponentID = fareComponent.getFareComponentID();
-
-                            if (fareComponentID != null && fareComponentID.getItemNumberDetails() != null) {
-                                for (ItemNumberIdentificationType item : fareComponentID.getItemNumberDetails()) {
-                                    if (item.getNumber() != null) {
-                                        String itemNumber = item.getNumber();
-                                        StringBuilder location = new StringBuilder();
-
-                                        TravelProductInformationTypeI marketFareComponent = fareComponent.getMarketFareComponent();
-
-                                        if (marketFareComponent != null) {
-                                            String boardPoint = "";
-                                            String offPoint = "";
-
-                                            if (marketFareComponent.getBoardPointDetails() != null && marketFareComponent.getBoardPointDetails().getTrueLocationId() != null) {
-                                                boardPoint = marketFareComponent.getBoardPointDetails().getTrueLocationId();
-                                            }
-
-                                            if (marketFareComponent.getOffpointDetails() != null && marketFareComponent.getOffpointDetails().getTrueLocationId() != null) {
-                                                offPoint = marketFareComponent.getOffpointDetails().getTrueLocationId();
-                                            }
-
-                                            location.append(boardPoint).append("-").append(offPoint);
-                                        }
-
-                                        if (location.length() > 1) {
-                                            fareComponentsMap.put(itemNumber, location.toString());
+                        for (Journey journey : journeyList) {
+                            if (journey != null) {
+                                List<AirSegmentInformation> airSegmentList= journey.getAirSegmentList();
+                                if (airSegmentList != null && !airSegmentList.isEmpty()) {
+                                    for (AirSegmentInformation airSegmentInformation : airSegmentList) {
+                                        String origin = airSegmentInformation.getFromLocation();
+                                        String destination = airSegmentInformation.getToLocation();
+                                        if (origin != null && destination != null) {
+                                            segmentList.add(origin);
+                                            segmentList.add(destination);
                                         }
                                     }
                                 }
                             }
                         }
+
+                        if (fareList.getFareComponentDetailsGroup() != null) {
+                            List<FareComponentDetailsType> fareComponents = fareList.getFareComponentDetailsGroup();
+
+                            for (FareComponentDetailsType fareComponent : fareComponents) {
+                                ItemNumberType fareComponentID = fareComponent.getFareComponentID();
+
+                                if (fareComponentID != null && fareComponentID.getItemNumberDetails() != null) {
+                                    for (ItemNumberIdentificationType item : fareComponentID.getItemNumberDetails()) {
+                                        if (item.getNumber() != null) {
+                                            String itemNumber = item.getNumber();
+                                            StringBuilder location = new StringBuilder();
+
+                                            TravelProductInformationTypeI marketFareComponent = fareComponent.getMarketFareComponent();
+
+                                            if (marketFareComponent != null) {
+                                                String boardPoint = "";
+                                                String offPoint = "";
+
+                                                if (marketFareComponent.getBoardPointDetails() != null && marketFareComponent.getBoardPointDetails().getTrueLocationId() != null) {
+                                                    boardPoint = marketFareComponent.getBoardPointDetails().getTrueLocationId();
+                                                    if (boardPoint != null) {
+                                                        Map<String, List<String>> iataCodeByCityCode = Airport.findIataCodeByCityCodeMap(boardPoint);
+                                                        if (iataCodeByCityCode != null && !iataCodeByCityCode.isEmpty()) {
+                                                            List<String> iataCodes = iataCodeByCityCode.get(boardPoint);
+                                                            if (iataCodes != null && !iataCodes.isEmpty()) {
+                                                                for (String segment : segmentList) {
+                                                                    if (iataCodes.contains(segment)) {
+                                                                        boardPoint = segment;
+                                                                        break;
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+
+                                                if (marketFareComponent.getOffpointDetails() != null && marketFareComponent.getOffpointDetails().getTrueLocationId() != null) {
+                                                    offPoint = marketFareComponent.getOffpointDetails().getTrueLocationId();
+                                                    if (offPoint != null) {
+                                                        Map<String, List<String>> iataCodeByCityCode = Airport.findIataCodeByCityCodeMap(offPoint);
+                                                        if (iataCodeByCityCode != null && !iataCodeByCityCode.isEmpty()) {
+                                                            List<String> iataCodes = iataCodeByCityCode.get(offPoint);
+                                                            if (iataCodes != null && !iataCodes.isEmpty()) {
+                                                                for (String segment : segmentList) {
+                                                                    if (iataCodes.contains(segment)) {
+                                                                        offPoint = segment;
+                                                                        break;
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+
+                                                location.append(boardPoint).append("-").append(offPoint);
+                                            }
+
+                                            if (location.length() > 1) {
+                                                fareComponentsMap.put(itemNumber, location.toString());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        fareList.getSegmentInformation();
                     }
                 }
             }
