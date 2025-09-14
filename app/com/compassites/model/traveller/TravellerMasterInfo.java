@@ -47,6 +47,15 @@ public class TravellerMasterInfo {
 
     private String accountName;
     private String expirationDate;
+    private String provider;
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
 
     public String getExpirationDate() {
         return expirationDate;
