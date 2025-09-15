@@ -106,6 +106,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
             AmadeusSessionWrapper amadeusSessionWrapper = null;
             String tstRefNo = "";
             try {
+                logger.info("travellerMasterInfo Split :" + Json.stringify(Json.toJson(travellerMasterInfo)));
                 amadeusSessionWrapper = amadeusSessionManager.getActiveSessionByRef(travellerMasterInfo.getSessionIdRef());
                 logger.debug("generatePNR called........" + Json.stringify(Json.toJson(amadeusSessionWrapper)));
                 tstRefNo = travellerMasterInfo.getGdsPNR();
@@ -402,7 +403,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
             /**
              * check for non batk and set booking office to BOM
              */
-            if (officeId.equals(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId()) && !isBATK(travellerMasterInfo)) {
+            if (travellerMasterInfo.getSearchSelectOfficeId()!=null &&  officeId.equals(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId()) && !isBATK(travellerMasterInfo)) {
                 officeId = amadeusSourceOfficeService.getDelhiSourceOffice().getOfficeId();
             }
             amadeusSessionWrapper = serviceHandler.logIn(officeId, true);
@@ -632,7 +633,9 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                 if (isFirstSegmentSell) {
                     gdsPNRReply = serviceHandler.retrievePNR(pnr, amadeusSessionWrapper);
                 }
+                System.out.println("Office Id : " + officeId);
                 checkFlightAvailibility(travellerMasterInfo, pnrResponse, amadeusSessionWrapper);
+                System.out.println("Flight Available : " + pnrResponse.isFlightAvailable());
                 if (pnrResponse.isFlightAvailable()) {
                     gdsPNRReply = serviceHandler.addTravellerInfoToPNR(travellerMasterInfo, amadeusSessionWrapper);
                     /* Benzy changes */
@@ -717,7 +720,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                     } else {
                         setLastTicketingDate(pricePNRReply, pnrResponse, travellerMasterInfo);
                         String benzyOfficeId = amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId().toString();
-                        if (travellerMasterInfo.getSearchSelectOfficeId().equalsIgnoreCase(benzyOfficeId)) {
+                        if (travellerMasterInfo.getSearchSelectOfficeId()!=null && travellerMasterInfo.getSearchSelectOfficeId().equalsIgnoreCase(benzyOfficeId)) {
                             boolean seamen = travellerMasterInfo.isSeamen();
                             List<HashMap> miniRule = new ArrayList<>();
                             FlightItinerary flightItinerary = travellerMasterInfo.getItinerary();
