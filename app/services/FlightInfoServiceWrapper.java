@@ -26,7 +26,7 @@ public class FlightInfoServiceWrapper {
 
 	@Autowired
 	private MystiflyFlightInfoServiceImpl mystiflyFlightInfoService;
-	
+
 	@Autowired
 	private TravelportFlightInfoServiceImpl travelportFlightInfoServiceImpl;
 
@@ -37,8 +37,11 @@ public class FlightInfoServiceWrapper {
 	private IndigoFlightInfoService indigoFlightInfoService;
 
 	public FlightItinerary getBaggageInfo(FlightItinerary flightItinerary,
-			SearchParameters searchParams, String provider, boolean seamen, TravellerMasterInfo travellerMasterInfo) {
+										  SearchParameters searchParams, String provider, boolean seamen, TravellerMasterInfo travellerMasterInfo) {
 		FlightItinerary response = null;
+		if (searchParams.isSplitTicket()) {
+			return createSplitTicketBaggage(flightItinerary, searchParams, provider, seamen, travellerMasterInfo);
+		}
 		if ("Travelport".equalsIgnoreCase(provider)) {
 			response = flightItinerary;
 			// Baggage info is available in search response
@@ -55,21 +58,34 @@ public class FlightInfoServiceWrapper {
 		}
 		return response;
 	}
-	
+
+	private FlightItinerary createSplitTicketBaggage(FlightItinerary flightItinerary,
+													 SearchParameters searchParams, String provider, boolean seamen, TravellerMasterInfo travellerMasterInfo) {
+		FlightItinerary response = null;
+		if ("Amadeus".equalsIgnoreCase(provider)) {
+			response = amadeusFlightInfoService.getSplitTicketBaggage(
+					flightItinerary, searchParams, seamen, travellerMasterInfo);
+		} else if("Indigo".equalsIgnoreCase(provider)) {
+			response = amadeusFlightInfoService.getSplitTicketBaggage(
+					flightItinerary, searchParams, seamen, travellerMasterInfo);
+		}
+		return response;
+	}
+
 	public FlightItinerary getInFlightDetails(FlightItinerary flightItinerary, String provider, boolean seamen) {
 		FlightItinerary response = flightItinerary;
 		if ("Travelport".equalsIgnoreCase(provider)) {
 			response = travelportFlightInfoServiceImpl.getInFlightDetails(flightItinerary, seamen);
-		} else if ("Amadeus".equalsIgnoreCase(provider)) { 
+		} else if ("Amadeus".equalsIgnoreCase(provider)) {
 			response = amadeusFlightInfoService.getInFlightDetails(flightItinerary, seamen);
 		} else if (Mystifly.PROVIDER.equalsIgnoreCase(provider)) {
 			// No Flight Amenities
 		}
 		return response;
 	}
-	
+
 	public String getCancellationFee(FlightItinerary flightItinerary,
-			SearchParameters searchParams, String provider, boolean seamen) {
+									 SearchParameters searchParams, String provider, boolean seamen) {
 		String fareRules = "";
 		if ("Travelport".equalsIgnoreCase(provider)) {
 			// Cancellation fee is available in search response
@@ -85,7 +101,7 @@ public class FlightInfoServiceWrapper {
 	}
 
 	public List<HashMap> getMiniRuleFeeFromFlightItenary(FlightItinerary flightItinerary,
-                                        SearchParameters searchParams, String provider, boolean seamen) {
+														 SearchParameters searchParams, String provider, boolean seamen) {
 		List<HashMap> miniRule = new ArrayList<>();
 		if ("Travelport".equalsIgnoreCase(provider)) {
 			// MiniRule not avaliable
@@ -122,12 +138,12 @@ public class FlightInfoServiceWrapper {
 //	}
 
 
-   /*
-      This function Fetches Fare rules based from TraveloMatrix API
-    */
+	/*
+       This function Fetches Fare rules based from TraveloMatrix API
+     */
 	public List<TraveloMatrixFaruleReply> getFareRuleFromTmx(String resultToken, String returnResultToken){
 		List<TraveloMatrixFaruleReply> traveloMatrixFaruleReplyList = null;
-		 traveloMatrixFaruleReplyList = traveloMatrixFlightInfoServiceImpl.flightFareRules(resultToken,returnResultToken);
+		traveloMatrixFaruleReplyList = traveloMatrixFlightInfoServiceImpl.flightFareRules(resultToken,returnResultToken);
 		return traveloMatrixFaruleReplyList;
 	}
 

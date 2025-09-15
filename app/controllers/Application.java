@@ -114,6 +114,7 @@ public class Application {
             try {
                 splitTicketSearchWrapper.searchSplitTicket(searchParameters);
             } catch (Exception e) {
+                logger.info("Exception in split ticket search ", e);
                 e.printStackTrace();
             }
         } else {
@@ -254,11 +255,11 @@ public class Application {
 
     @BodyParser.Of(BodyParser.Json.class)
     public Result getBaggageInfo() {
-    	JsonNode json = request().body().asJson();
-    	SearchParameters searchParams = Json.fromJson(json.findPath("searchParams"), SearchParameters.class);
-    	FlightItinerary flightItinerary = Json.fromJson(json.findPath("flightItinerary"), FlightItinerary.class);
-    	String provider = json.get("provider").asText();
-    	Boolean seamen = Json.fromJson(json.findPath("travellerInfo").findPath("seamen"), Boolean.class);
+        JsonNode json = request().body().asJson();
+        SearchParameters searchParams = Json.fromJson(json.findPath("searchParams"), SearchParameters.class);
+        FlightItinerary flightItinerary = Json.fromJson(json.findPath("flightItinerary"), FlightItinerary.class);
+        String provider = json.get("provider").asText();
+        Boolean seamen = Json.fromJson(json.findPath("travellerInfo").findPath("seamen"), Boolean.class);
         int adultCount = Json.fromJson(json.findPath("travellerInfo").findPath("adultCount"), Integer.class);
         int childCount = Json.fromJson(json.findPath("travellerInfo").findPath("childCount"), Integer.class);
         int infantCount = Json.fromJson(json.findPath("travellerInfo").findPath("infantCount"), Integer.class);
@@ -267,13 +268,13 @@ public class Application {
         travellerMasterInfo.setAdtultCount(adultCount);
         travellerMasterInfo.setChildCount(childCount);
         travellerMasterInfo.setInfantCount(infantCount);
-    	FlightItinerary response = null;
-    	try {
+        FlightItinerary response = null;
+        try {
             logger.info("Baggage info "+Json.toJson(flightItinerary));
-    		response = flightInfoService.getBaggageInfo(flightItinerary, searchParams, provider, seamen,travellerMasterInfo);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+            response = flightInfoService.getBaggageInfo(flightItinerary, searchParams, provider, seamen,travellerMasterInfo);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return Controller.ok(Json.toJson(response));
     }
 
@@ -797,7 +798,7 @@ public class Application {
         AncillaryBookingRequest ancillaryBookingRequest = Json.fromJson(json, AncillaryBookingRequest.class);
         logger.debug("Ancillary - Baggage Confirm Request {} ", Json.toJson(ancillaryBookingRequest));
 
-        AncillaryBookingResponse ancillaryBookingResponse = ancillaryService.getAncillaryBaggageConfirm(ancillaryBookingRequest);
+        Map<String, List<AncillaryBookingResponse>> ancillaryBookingResponse = ancillaryService.getAncillaryBaggageConfirm(ancillaryBookingRequest);
         logger.debug("Ancillary - Meals Request {} ", Json.toJson(ancillaryBookingResponse));
 
         return ok(Json.toJson(ancillaryBookingResponse));
@@ -887,6 +888,22 @@ public class Application {
 
     public Result home() {
         return ok("GDS Service running.....");
+    }
+
+
+    //    AirlineWise Time Limit
+    public Result getAirlineWiseTimeLimit(){
+        JsonNode json = request().body().asJson();
+        logger.debug("-----------------  getAirlineWiseTimeLimit Request: "+json);
+
+        List<String> gdsPnrList = new ArrayList<>();
+        for (JsonNode node : json.get("gdsPNRList")) {
+            gdsPnrList.add(node.asText());
+        }
+
+        Map<String , PNRResponse> pnrResponseMap  = bookingService.airlineWiseTimeLimit(gdsPnrList);
+        logger.debug("-----------------PNR Response: "+Json.toJson(pnrResponseMap));
+        return Controller.ok(Json.toJson(pnrResponseMap));
     }
 
 

@@ -35,7 +35,7 @@ public class PNRResponse implements Serializable  {
     private BigDecimal changedBasePrice;
 
     private String airlinePNR;
-    
+
     private PricingInformation pricingInfo;
 
     private boolean holdTime;
@@ -131,6 +131,10 @@ public class PNRResponse implements Serializable  {
     private Map<String,FareCheckRulesResponse> fareCheckRulesResponseMap;
 
     private String status;
+
+    private boolean nonOfficeId;
+
+    private boolean isTicketPresent;
 
     public Map<String, String> getPnrMap() {
         return pnrMap;
@@ -354,30 +358,30 @@ public class PNRResponse implements Serializable  {
     public void setCappingLimitReached(boolean isCappingLimitReached) {
         this.isCappingLimitReached = isCappingLimitReached;
     }
-	
-	public BigDecimal getChangedBasePrice() {
+
+    public BigDecimal getChangedBasePrice() {
         return changedBasePrice;
     }
 
-	public void setChangedBasePrice(BigDecimal changedBasePrice) {
+    public void setChangedBasePrice(BigDecimal changedBasePrice) {
         this.changedBasePrice = changedBasePrice;
     }
 
-	public String getAirlinePNR() {
-		return airlinePNR;
-	}
+    public String getAirlinePNR() {
+        return airlinePNR;
+    }
 
-	public void setAirlinePNR(String airlinePNR) {
-		this.airlinePNR = airlinePNR;
-	}
+    public void setAirlinePNR(String airlinePNR) {
+        this.airlinePNR = airlinePNR;
+    }
 
-	public PricingInformation getPricingInfo() {
-		return pricingInfo;
-	}
+    public PricingInformation getPricingInfo() {
+        return pricingInfo;
+    }
 
-	public void setPricingInfo(PricingInformation pricingInfo) {
-		this.pricingInfo = pricingInfo;
-	}
+    public void setPricingInfo(PricingInformation pricingInfo) {
+        this.pricingInfo = pricingInfo;
+    }
 
     public boolean isHoldTime() {
         return holdTime;
@@ -425,8 +429,8 @@ public class PNRResponse implements Serializable  {
 
     public void setAirlinePNRError(boolean airlinePNRError) {
         this.airlinePNRError = airlinePNRError;
-	}
-	
+    }
+
     public void setBookedStatus(String bookedStatus){
         this.bookedStatus = bookedStatus;
     }
@@ -508,5 +512,19 @@ public class PNRResponse implements Serializable  {
         this.airlineSpecificQueueAndTimeLimitDetailsList = airlineSpecificQueueAndTimeLimitDetailsList;
     }
 
-}
+    public boolean isNonOfficeId() {
+        return nonOfficeId;
+    }
 
+    public void setNonOfficeId(boolean nonOfficeId) {
+        this.nonOfficeId = nonOfficeId;
+    }
+
+    public boolean isTicketPresent() {
+        return isTicketPresent;
+    }
+
+    public void setTicketPresent(boolean ticketPresent) {
+        isTicketPresent = ticketPresent;
+    }
+}

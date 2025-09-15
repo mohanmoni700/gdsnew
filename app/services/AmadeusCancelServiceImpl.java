@@ -23,7 +23,7 @@ public class AmadeusCancelServiceImpl implements CancelService {
     private ServiceHandler serviceHandler;
 
     @Override
-    public CancelPNRResponse cancelPNR(String pnr, Boolean isFullPNR) {
+    public CancelPNRResponse cancelPNR(String pnr,Boolean isFullPNR) {
         logger.debug("cancelPNR called for PNR : " + pnr);
         CancelPNRResponse cancelPNRResponse = new CancelPNRResponse();
         //ServiceHandler serviceHandler = null;
@@ -33,7 +33,7 @@ public class AmadeusCancelServiceImpl implements CancelService {
             amadeusSessionWrapper = serviceHandler.logIn(true);
 
             PNRReply pnrReply = serviceHandler.retrievePNR(pnr, amadeusSessionWrapper);
-            if (!isFullPNR) {
+            if(!isFullPNR) {
                 for (PNRReply.DataElementsMaster.DataElementsIndiv dataElementsDiv : pnrReply.getDataElementsMaster().getDataElementsIndiv()) {
                     if ("FA".equals(dataElementsDiv.getElementManagementData().getSegmentName())) {
                         logger.debug("Tickets are already issued cannot cancel the pnr: " + pnr);
@@ -56,38 +56,38 @@ public class AmadeusCancelServiceImpl implements CancelService {
                     }
                 }
                 pnrReply = serviceHandler.cancelPNR(pnr, pnrReply, amadeusSessionWrapper);
-            } else {
-                pnrReply = serviceHandler.cancelFullPNR(pnr, pnrReply, amadeusSessionWrapper, false);
+            }else{
+                pnrReply = serviceHandler.cancelFullPNR(pnr, pnrReply, amadeusSessionWrapper,false);
             }
             PNRReply savePNRReply = serviceHandler.savePNR(amadeusSessionWrapper);
             PNRReply retrievePNRReply = serviceHandler.retrievePNR(pnr, amadeusSessionWrapper);
 
             //todo check for origindestinationDetails in retrievePNRReply to confirm cancellation
             cancelPNRResponse.setSuccess(true);
-            logger.debug("Succesfully Cancelled PNR " + pnr);
+            logger.debug("Succesfully Cancelled PNR " + pnr );
             return cancelPNRResponse;
 
-        } catch (Exception e) {
+        }catch (Exception e){
             e.printStackTrace();
             logger.error(pnr + " : Error in PNR cancellation ", e);
             cancelPNRResponse.setSuccess(false);
             ErrorMessage errorMessage = ErrorMessageHelper.createErrorMessage("error", ErrorMessage.ErrorType.ERROR, PROVIDERS.AMADEUS.toString());
             cancelPNRResponse.setErrorMessage(errorMessage);
             return cancelPNRResponse;
-        } finally {
+        }finally {
             serviceHandler.logOut(amadeusSessionWrapper);
         }
     }
 
     @Override
     public CancelPNRResponse cancelTimeLimitReachedPNR(String pnr, Boolean isFullPNR) {
-        logger.debug("cancelTimeLimitReachedPNR called for PNR : " + pnr + " isFullPNR " + isFullPNR);
+        logger.debug("cancelTimeLimitReachedPNR called for PNR : " + pnr+ " isFullPNR "+isFullPNR);
         CancelPNRResponse cancelPNRResponse = new CancelPNRResponse();
         AmadeusSessionWrapper amadeusSessionWrapper = null;
         try {
             amadeusSessionWrapper = serviceHandler.logIn(true);
             PNRReply pnrReply = serviceHandler.retrievePNR(pnr, amadeusSessionWrapper);
-            if (!isFullPNR) {
+            if(!isFullPNR) {
                 for (PNRReply.DataElementsMaster.DataElementsIndiv dataElementsDiv : pnrReply.getDataElementsMaster().getDataElementsIndiv()) {
                     if ("FA".equals(dataElementsDiv.getElementManagementData().getSegmentName())) {
                         logger.debug("Tickets are already issued cannot cancel the pnr: {} ", pnr);
@@ -119,17 +119,17 @@ public class AmadeusCancelServiceImpl implements CancelService {
                 cancelPNRResponse.setErrorMessage(errorMessage);
                 cancelPNRResponse.setSuccess(false);
             }
-            logger.debug("Succesfully Cancelled PNR {} ", pnr);
+            logger.debug("Succesfully Cancelled PNR {} ", pnr );
             return cancelPNRResponse;
 
-        } catch (Exception e) {
+        }catch (Exception e){
             e.printStackTrace();
             logger.error(pnr + " : Error in PNR cancellation ", e);
             cancelPNRResponse.setSuccess(false);
             ErrorMessage errorMessage = ErrorMessageHelper.createErrorMessage("error", ErrorMessage.ErrorType.ERROR, PROVIDERS.AMADEUS.toString());
             cancelPNRResponse.setErrorMessage(errorMessage);
             return cancelPNRResponse;
-        } finally {
+        }finally {
             serviceHandler.logOut(amadeusSessionWrapper);
         }
     }
@@ -137,34 +137,34 @@ public class AmadeusCancelServiceImpl implements CancelService {
     @Override
     public CancelPNRResponse cancelOnlyItineraryFromPNR(String pnr, Boolean isFullPNR) {
 
-        logger.debug("cancelOnlyItineraryFromPNR called for PNR : " + pnr + " isFullPNR " + isFullPNR);
+        logger.debug("cancelOnlyItineraryFromPNR called for PNR : {} isFullPNR {}", pnr, isFullPNR);
         CancelPNRResponse cancelPNRResponse = new CancelPNRResponse();
         AmadeusSessionWrapper amadeusSessionWrapper = null;
         try {
             amadeusSessionWrapper = serviceHandler.logIn(true);
             PNRReply pnrReply = serviceHandler.retrievePNR(pnr, amadeusSessionWrapper);
-            if (!isFullPNR) {
+            if(!isFullPNR) {
                 pnrReply = serviceHandler.cancelPNR(pnr, pnrReply, amadeusSessionWrapper);
                 PNRReply savePNRReply = serviceHandler.savePNR(amadeusSessionWrapper);
                 PNRReply retrievePNRReply = serviceHandler.retrievePNR(pnr, amadeusSessionWrapper);
                 cancelPNRResponse.setSuccess(true);
             } else {
-                logger.debug("Is isFullPNR is true : " + pnr);
+                logger.debug("Is isFullPNR is true {} : ", pnr);
                 ErrorMessage errorMessage = ErrorMessageHelper.createErrorMessage("ticketIssuedError", ErrorMessage.ErrorType.ERROR, PROVIDERS.AMADEUS.toString());
                 cancelPNRResponse.setErrorMessage(errorMessage);
                 cancelPNRResponse.setSuccess(false);
             }
-            logger.debug("Succesfully Cancelled PNR " + pnr);
+            logger.debug("Succesfully Cancelled PNR  {} ", pnr );
             return cancelPNRResponse;
 
-        } catch (Exception e) {
+        }catch (Exception e){
             e.printStackTrace();
             logger.error(pnr + " : Error in PNR cancellation ", e);
             cancelPNRResponse.setSuccess(false);
             ErrorMessage errorMessage = ErrorMessageHelper.createErrorMessage("error", ErrorMessage.ErrorType.ERROR, PROVIDERS.AMADEUS.toString());
             cancelPNRResponse.setErrorMessage(errorMessage);
             return cancelPNRResponse;
-        } finally {
+        }finally {
             serviceHandler.logOut(amadeusSessionWrapper);
         }
     }

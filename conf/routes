@@ -34,7 +34,6 @@ POST    /getMessagesFromQueue                      @controllers.Application.getM
 GET     /                                          @controllers.Application.home()
 POST 	/ticketCancelDocuments                     @controllers.Application.ticketCancelDocuments()
 POST 	/refundSplitTicket                         @controllers.Application.refundSplitTicket()
-POST    /splitTicket                               @controllers.SplitTicketController.findPossibleRoutes
 POST	/findroute                              @controllers.Application.getRoutes
 POST    /checkSplitTicketFareAvailability                         @controllers.Application.checkSplitTicketFareAvailability
 POST    /generateSplitTicketPNR                                   @controllers.Application.generateSplitTicketWithSinglePNR
@@ -85,3 +84,5 @@ POST    /saveBooking   @controllers.Application.saveIndigoBooking()
 #Exchange Rates
 POST    /getAmadeusExchangeRates   @controllers.Application.getAmadeusExchangeRates()
 
+#AirlineTimeLimit
+POST    /getAirlineWiseTimeLimit   @controllers.Application.getAirlineWiseTimeLimit()
