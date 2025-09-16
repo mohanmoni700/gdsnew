@@ -25,6 +25,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import play.Configuration;
 import play.Play;
+import play.libs.Json;
+import services.indigo.IndigoFlightService;
 import utils.AmadeusBookingHelper;
 import utils.AmadeusHelper;
 import utils.AmadeusSessionManager;
@@ -56,6 +58,8 @@ public class AmadeusIssuanceServiceImpl {
 
     @Autowired
     private AmadeusSourceOfficeService amadeusSourceOfficeService;
+    @Autowired
+    private IndigoFlightService indigoFlightService;
 
     @Autowired
     public AmadeusIssuanceServiceImpl(AmadeusSessionManager amadeusSessionManager) {
@@ -79,6 +83,24 @@ public class AmadeusIssuanceServiceImpl {
             }
         }
         return null;
+    }
+
+    public IssuanceResponse splitTicketPriceBooking(IssuanceRequest issuanceRequest) {
+        FlightItinerary flightItinerary = issuanceRequest.getFlightItinerary();
+        List<IssuanceResponse> issuanceResponses = new ArrayList<>();
+        IssuanceResponse amadeusIssuanceResponse = null;
+        for (Journey journey: flightItinerary.getJourneyList()) {
+            if (journey.getProvider().equalsIgnoreCase("Amadeus")) {
+                amadeusIssuanceResponse = priceBookedPNR(issuanceRequest);
+                logger.info("amadeusIssuanceResponse "+ Json.toJson(amadeusIssuanceResponse));
+                issuanceResponses.add(amadeusIssuanceResponse);
+            }
+            if(journey.getProvider().equalsIgnoreCase("Indigo")) {
+                IssuanceResponse issuanceResponse = indigoFlightService.priceBookedPNR(issuanceRequest);
+                issuanceResponses.add(issuanceResponse);
+            }
+        }
+        return amadeusIssuanceResponse;
     }
 
     public IssuanceResponse priceBookedPNR(IssuanceRequest issuanceRequest) {
