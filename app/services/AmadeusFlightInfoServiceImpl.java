@@ -693,32 +693,34 @@ public class AmadeusFlightInfoServiceImpl implements FlightInfoService {
             if (flightItinerary.isSplitTicket()) {
                 int i = 0;
                 for (Journey journey : flightItinerary.getJourneyList()) {
-                    Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap1 = new LinkedHashMap<>();
-                    List<Journey> journeyList1 = new ArrayList<>();
-                    String officeId = journey.isSeamen() ? flightItinerary.getSeamanPricingInformation().getPricingOfficeId() : flightItinerary.getPricingInformation().getPricingOfficeId();
+                    if(journey.getProvider().equalsIgnoreCase("Amadeus")) {
+                        Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap1 = new LinkedHashMap<>();
+                        List<Journey> journeyList1 = new ArrayList<>();
+                        String officeId = configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey()); //journey.isSeamen() ? flightItinerary.getSeamanPricingInformation().getPricingOfficeId() : flightItinerary.getPricingInformation().getPricingOfficeId();
 
-                    if (amadeusSourceOfficeService.getPrioritySourceOffice().getOfficeId().equalsIgnoreCase(officeId)) {
-                        amadeusSessionWrapper = serviceHandler.logIn(amadeusSourceOfficeService.getPrioritySourceOffice().getOfficeId(), true);
-                    } else if (amadeusSourceOfficeService.getDelhiSourceOffice().getOfficeId().equalsIgnoreCase(officeId)) {
-                        amadeusSessionWrapper = serviceHandler.logIn(amadeusSourceOfficeService.getDelhiSourceOffice().getOfficeId(), true);
-                    } else if (amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId().equalsIgnoreCase(officeId)) {
-                        amadeusSessionWrapper = serviceHandler.logIn(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId(), true);
-                    }
-                    journeyList1.add(journey);
-                    //List<Journey> journeyList = seamen ? flightItinerary.getJourneyList() : flightItinerary.getNonSeamenJourneyList();
-                    List<PAXFareDetails> paxFareDetailsList = flightItinerary.getSplitPricingInformationList().get(i).getPaxFareDetailsList();
+                        if (amadeusSourceOfficeService.getPrioritySourceOffice().getOfficeId().equalsIgnoreCase(officeId)) {
+                            amadeusSessionWrapper = serviceHandler.logIn(amadeusSourceOfficeService.getPrioritySourceOffice().getOfficeId(), true);
+                        } else if (amadeusSourceOfficeService.getDelhiSourceOffice().getOfficeId().equalsIgnoreCase(officeId)) {
+                            amadeusSessionWrapper = serviceHandler.logIn(amadeusSourceOfficeService.getDelhiSourceOffice().getOfficeId(), true);
+                        } else if (amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId().equalsIgnoreCase(officeId)) {
+                            amadeusSessionWrapper = serviceHandler.logIn(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId(), true);
+                        }
+                        journeyList1.add(journey);
+                        //List<Journey> journeyList = seamen ? flightItinerary.getJourneyList() : flightItinerary.getNonSeamenJourneyList();
+                        List<PAXFareDetails> paxFareDetailsList = flightItinerary.getSplitPricingInformationList().get(i).getPaxFareDetailsList();
 
-                    FareInformativePricingWithoutPNRReply reply = serviceHandler.getFareInfo(journeyList1, journey.isSeamen(), searchParams.getAdultCount(), searchParams.getChildCount(), searchParams.getInfantCount(), paxFareDetailsList, amadeusSessionWrapper);
-                    if (reply.getErrorGroup() != null) {
-                        logger.debug("FareInformativePricing failed while running fare check rules for split ticket: {}", reply.getErrorGroup().getErrorWarningDescription().getFreeText());
-                    } else {
-                        fareComponents = AmadeusBookingHelper.getFareComponentMapFromFareInformativePricing(reply);
-                        logger.debug("Fare components for split ticket: {}", fareComponents);
+                        FareInformativePricingWithoutPNRReply reply = serviceHandler.getFareInfo(journeyList1, journey.isSeamen(), searchParams.getAdultCount(), searchParams.getChildCount(), searchParams.getInfantCount(), paxFareDetailsList, amadeusSessionWrapper);
+                        if (reply.getErrorGroup() != null) {
+                            logger.debug("FareInformativePricing failed while running fare check rules for split ticket: {}", reply.getErrorGroup().getErrorWarningDescription().getFreeText());
+                        } else {
+                            fareComponents = AmadeusBookingHelper.getFareComponentMapFromFareInformativePricing(reply);
+                            logger.debug("Fare components for split ticket: {}", fareComponents);
 
-                        fareCheckRulesResponseMap1 = amadeusBookingHelper.getFareRuleTxtMapFromPricingAndFc(amadeusSessionWrapper, fareComponents);
-                    }
-                    if (fareCheckRulesResponseMap1 != null && !fareCheckRulesResponseMap1.isEmpty()) {
-                        fareCheckRulesResponseMap.putAll(fareCheckRulesResponseMap1);
+                            fareCheckRulesResponseMap1 = amadeusBookingHelper.getFareRuleTxtMapFromPricingAndFc(amadeusSessionWrapper, fareComponents);
+                        }
+                        if (fareCheckRulesResponseMap1 != null && !fareCheckRulesResponseMap1.isEmpty()) {
+                            fareCheckRulesResponseMap.putAll(fareCheckRulesResponseMap1);
+                        }
                     }
                     i++;
                 }
