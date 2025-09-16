@@ -191,7 +191,10 @@ public class AmadeusBookingServiceImpl implements BookingService {
             Date lastPNRAddMultiElements = new Date();
 
             gdsPNRReply = readAirlinePNR(gdsPNRReply, lastPNRAddMultiElements, pnrResponse, amadeusSessionWrapper);
-            checkSegmentStatus(gdsPNRReply);
+
+            if(!isAddBooking) {
+                checkSegmentStatus(gdsPNRReply);
+            }
             List<String> segmentNumbers = new ArrayList<>();
             for (PNRReply.OriginDestinationDetails originDestinationDetails : gdsPNRReply.getOriginDestinationDetails()) {
                 for (ItineraryInfo itineraryInfo : originDestinationDetails.getItineraryInfo()) {
@@ -1301,15 +1304,35 @@ public class AmadeusBookingServiceImpl implements BookingService {
                 gdsPNRReply = serviceHandler.addTravellerInfoToPNR(travellerMasterInfo, amadeusSessionWrapper);
                 //}
                 if (travellerMasterInfo.getAdditionalInfo() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking()) {
+
+//                    Handled addBooking for EK flights
+                    String specificOfficeIdforAirline = getSpecificOfficeIdforAirline(travellerMasterInfo.getItinerary());
+
+                    if (specificOfficeIdforAirline != null) {
+                        FlightItinerary itinerary = travellerMasterInfo.getItinerary();
+                        if (itinerary != null) {
+                            PricingInformation pricingInfo = itinerary.getPricingInformation(travellerMasterInfo.isSeamen());
+                            if (pricingInfo != null) {
+                                String pricingOfficeId = pricingInfo.getPricingOfficeId();
+
+//                                Pricing from BOM id
+                                if ("BOMAK38SN".equalsIgnoreCase(pricingOfficeId)) {
+                                    pricingInfo.setPricingOfficeId("BOMVS34C3");
+                                }
+                            }
+                        }
+                    }
+
                     List<Journey> journeyList = travellerMasterInfo.isSeamen() ? travellerMasterInfo.getItinerary().getJourneyList() : travellerMasterInfo.getItinerary().getNonSeamenJourneyList();
                     List<PAXFareDetails> paxFareDetailsList = travellerMasterInfo.getItinerary().getPricingInformation(travellerMasterInfo.isSeamen()).getPaxFareDetailsList();
-                    FareInformativePricingWithoutPNRReply reply = serviceHandler.getFareInfo(journeyList, travellerMasterInfo.isSeamen(), 1, 0, 0, paxFareDetailsList, amadeusSessionWrapper);
-                    if (reply.getErrorGroup() != null) {
-                        amadeusLogger.debug("Not able to fetch FareInformativePricingWithoutPNRReply: " + reply.getErrorGroup().getErrorWarningDescription().getFreeText());
-                        pnrResponse.setFlightAvailable(false);
-                        pnrResponse.setPriceChanged(false);
-                        return pnrResponse;
-                    }
+
+//                    FareInformativePricingWithoutPNRReply reply = serviceHandler.getFareInfo(journeyList, travellerMasterInfo.isSeamen(), 1, 0, 0, paxFareDetailsList, amadeusSessionWrapper);
+//                    if (reply.getErrorGroup() != null) {
+//                        amadeusLogger.debug("Not able to fetch FareInformativePricingWithoutPNRReply: " + reply.getErrorGroup().getErrorWarningDescription().getFreeText());
+//                        pnrResponse.setFlightAvailable(false);
+//                        pnrResponse.setPriceChanged(false);
+//                        return pnrResponse;
+//                    }
                 }
 
 
