@@ -272,6 +272,10 @@ public class BookingServiceWrapper {
 	public IssuanceResponse priceBookedPNR(IssuanceRequest issuanceRequest){
 
 		IssuanceResponse issuanceResponse = null;
+		if(issuanceRequest.getFlightItinerary().isSplitTicket() && isIndigoFlight(issuanceRequest)) {
+			issuanceResponse = splitTicketPriceBooking(issuanceRequest);
+			return issuanceResponse;
+		}
 		if(PROVIDERS.TRAVELPORT.toString().equalsIgnoreCase(issuanceRequest.getProvider()) || "Galileo".equalsIgnoreCase(issuanceRequest.getProvider())){
 			issuanceResponse = travelportIssuanceService.priceBookedPNR(issuanceRequest);
 		}else if(PROVIDERS.AMADEUS.toString().equalsIgnoreCase(issuanceRequest.getProvider())){
@@ -280,6 +284,35 @@ public class BookingServiceWrapper {
 			issuanceResponse = indigoFlightService.priceBookedPNR(issuanceRequest);
 		}
 
+		return issuanceResponse;
+	}
+
+	private boolean isIndigoFlight(IssuanceRequest issuanceRequest) {
+		List<Integer> journeyIndex = new ArrayList<>();
+		int index = 0;
+		boolean isIndigoFlight = false;
+		int amadeusIndex = 0;
+		int indigoIndex = 0;
+		for(Journey journey: issuanceRequest.getFlightItinerary().getJourneyList()) {
+			if(journey.getProvider().equalsIgnoreCase("Indigo")) {
+				journeyIndex.add(index);
+				indigoIndex++;
+			}
+			if(journey.getProvider().equalsIgnoreCase("Amadeus")) {
+				amadeusIndex++;
+			}
+			index++;
+		}
+		if (indigoIndex == 1 && amadeusIndex == 1) {
+			isIndigoFlight = true;
+		}
+		System.out.println("isIndigoFlight "+isIndigoFlight);
+		return isIndigoFlight;
+	}
+
+	private IssuanceResponse splitTicketPriceBooking(IssuanceRequest issuanceRequest){
+		System.out.println("Indigo and amadeus");
+		IssuanceResponse issuanceResponse = amadeusIssuanceService.splitTicketPriceBooking(issuanceRequest);
 		return issuanceResponse;
 	}
 

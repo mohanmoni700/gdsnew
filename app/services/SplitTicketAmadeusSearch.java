@@ -509,6 +509,7 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
         pricingInformation.setTax(totalTax);
         pricingInformation.setTotalPrice(totalFare);
         pricingInformation.setTotalPriceValue(totalFare);
+        pricingInformation.setPricingOfficeId(configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey()));
         List<PassengerTax> passengerTaxes= new ArrayList<>();
         for(FareMasterPricerTravelBoardSearchReply.Recommendation.PaxFareProduct paxFareProduct : recommendation.getPaxFareProduct()) {
             PassengerTax passengerTax = new PassengerTax();

@@ -52,6 +52,15 @@ public class IssuanceResponse implements Serializable{
     private boolean isIssued;
 
     private String expirationDate;
+    private Map<String,String> splitTicketNumberMap;
+
+    public Map<String, String> getSplitTicketNumberMap() {
+        return splitTicketNumberMap;
+    }
+
+    public void setSplitTicketNumberMap(Map<String, String> splitTicketNumberMap) {
+        this.splitTicketNumberMap = splitTicketNumberMap;
+    }
 
     public String getExpirationDate() {
         return expirationDate;

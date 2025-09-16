@@ -70,6 +70,14 @@ public class IssuanceRequest implements Serializable{
 
 
     private String expirationDate;
+    private boolean isSplitTicket;
+    public boolean isSplitTicket() {
+        return isSplitTicket;
+    }
+
+    public void setSplitTicket(boolean splitTicket) {
+        isSplitTicket = splitTicket;
+    }
 
     public String getExpirationDate() {
         return expirationDate;

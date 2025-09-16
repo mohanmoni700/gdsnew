@@ -20,6 +20,7 @@ import com.compassites.model.*;
 import com.compassites.model.amadeus.AmadeusPaxInformation;
 import com.compassites.model.traveller.Traveller;
 import com.compassites.model.traveller.TravellerMasterInfo;
+import ennum.ConfigMasterConstants;
 import models.AmadeusSessionWrapper;
 import org.apache.commons.lang3.SerializationUtils;
 import org.joda.time.DateTime;
@@ -32,6 +33,7 @@ import org.springframework.stereotype.Service;
 import play.Configuration;
 import play.Play;
 import play.libs.Json;
+import services.indigo.IndigoFlightService;
 import utils.*;
 
 import java.math.BigDecimal;
@@ -45,7 +47,8 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
     static org.slf4j.Logger amadeusLogger = LoggerFactory.getLogger("amadeus");
 
     static org.slf4j.Logger logger = LoggerFactory.getLogger("gds");
-
+    @Autowired
+    private ConfigurationMasterService configurationMasterService;
     @Autowired
     private AmadeusSessionManager amadeusSessionManager;
 
@@ -63,6 +66,8 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
 
     @Autowired
     private ServiceHandler serviceHandler;
+    @Autowired
+    private IndigoFlightService indigoFlightService;
 
     static {
         baggageCodes.put("700", "KG");
@@ -103,6 +108,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
             AmadeusSessionWrapper amadeusSessionWrapper = null;
             String tstRefNo = "";
             try {
+                logger.info("travellerMasterInfo Split :" + Json.stringify(Json.toJson(travellerMasterInfo)));
                 amadeusSessionWrapper = amadeusSessionManager.getActiveSessionByRef(travellerMasterInfo.getSessionIdRef());
                 logger.debug("generatePNR called........" + Json.stringify(Json.toJson(amadeusSessionWrapper)));
                 tstRefNo = travellerMasterInfo.getGdsPNR();
@@ -136,7 +142,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                 Date lastPNRAddMultiElements = new Date();
 
                 gdsPNRReply = readAirlinePNR(gdsPNRReply, lastPNRAddMultiElements, pnrResponse, amadeusSessionWrapper);
-                checkSegmentStatus(gdsPNRReply);
+                //checkSegmentStatus(gdsPNRReply);
                 List<String> segmentNumbers = new ArrayList<>();
                 for (PNRReply.OriginDestinationDetails originDestinationDetails : gdsPNRReply.getOriginDestinationDetails()) {
                     for (PNRReply.OriginDestinationDetails.ItineraryInfo itineraryInfo : originDestinationDetails.getItineraryInfo()) {
@@ -185,6 +191,10 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
             pnrResponseList.add(pnrResponse);
         }
         return pnrResponseList;
+    }
+
+    private void createSegmentPricingForIndigo() {
+
     }
 
     private void createSegmentPricing(PNRReply gdsPNRReply, PNRResponse pnrResponse, TicketDisplayTSTReply ticketDisplayTSTReply) {
@@ -367,6 +377,33 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
         return passengerTax;
     }
 
+    private PNRResponse generateIndigoPricePNR(TravellerMasterInfo travellerMasterInfo) {
+        logger.debug("generateIndigoPricePNR called ........");
+        PNRResponse pnrResponse = new PNRResponse();
+        try {
+            pnrResponse = indigoFlightService.generatePNR(travellerMasterInfo);
+            logger.info("generateIndigoPricePNR response :" + Json.stringify(Json.toJson(pnrResponse)));
+        } catch (Exception e) {
+            logger.error("error in generateIndigoPricePNR : ", e);
+            ErrorMessage errorMessage = ErrorMessageHelper.createErrorMessage(
+                    "error", ErrorMessage.ErrorType.ERROR, PROVIDERS.INDIGO.toString());
+            pnrResponse.setErrorMessage(errorMessage);
+        }
+        return pnrResponse;
+    }
+
+    private List<Integer> isIndigoFlight(TravellerMasterInfo travellerMasterInfo) {
+        List<Integer> journeyIndex = new ArrayList<>();
+        int index = 0;
+        for(Journey journey: travellerMasterInfo.getItinerary().getJourneyList()) {
+            if(journey.getProvider().equalsIgnoreCase("Indigo")) {
+                journeyIndex.add(index);
+            }
+            index++;
+        }
+        return journeyIndex;
+    }
+
     @Override
     public PNRResponse generateSplitTicketWithSinglePNR(TravellerMasterInfo travellerMasterInfo) {
         logger.debug("generatePNR called ........");
@@ -376,6 +413,10 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
         AmadeusSessionWrapper amadeusSessionWrapper = null;
         String tstRefNo = "";
         String officeId = null;
+        logger.info("travellerMasterInfo in generateSplitTicketWithSinglePNR "+ Json.stringify(Json.toJson(travellerMasterInfo)));
+        if(isIndigoFlight(travellerMasterInfo).size() == 2) {
+            return generateIndigoPricePNR(travellerMasterInfo);
+        }
         try {
             officeId = getSpecificOfficeIdforAirline(travellerMasterInfo.getItinerary());
             boolean isDelIdAirline = isDelIdAirlines(travellerMasterInfo);
@@ -392,14 +433,18 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                 }
                 System.out.println("Off " + officeId);
             }
+
+            officeId = configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey());
             /**
              * check for non batk and set booking office to BOM
              */
-            if (officeId.equals(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId()) && !isBATK(travellerMasterInfo)) {
+            if (travellerMasterInfo.getSearchSelectOfficeId()!=null &&  officeId.equals(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId()) && !isBATK(travellerMasterInfo)) {
                 officeId = amadeusSourceOfficeService.getDelhiSourceOffice().getOfficeId();
             }
+            System.out.println("Off 2 " + officeId);
             amadeusSessionWrapper = serviceHandler.logIn(officeId, true);
             logger.debug("generatePNR called........" + Json.stringify(Json.toJson(amadeusSessionWrapper)));
+
 
             tstRefNo = travellerMasterInfo.getGdsPNR();
 
@@ -419,7 +464,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
             Date lastPNRAddMultiElements = new Date();
 
             gdsPNRReply = readAirlinePNR(gdsPNRReply, lastPNRAddMultiElements, pnrResponse, amadeusSessionWrapper);
-            checkSegmentStatus(gdsPNRReply);
+            //checkSegmentStatus(gdsPNRReply);
             List<String> segmentNumbers = new ArrayList<>();
             for (PNRReply.OriginDestinationDetails originDestinationDetails : gdsPNRReply.getOriginDestinationDetails()) {
                 for (PNRReply.OriginDestinationDetails.ItineraryInfo itineraryInfo : originDestinationDetails.getItineraryInfo()) {
@@ -568,7 +613,8 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                     pnrResponse.setPnrNumber(pnrHeader.getReservationInfo()
                             .getReservation().get(0).getControlNumber());
                 }
-                throw new BaseCompassitesException("Simultaneeous changes Error");
+                return pnrReply;
+                //throw new BaseCompassitesException("Simultaneeous changes Error");
             } else {
                 Thread.sleep(3000);
                 pnrReply = serviceHandler.ignoreAndRetrievePNR(amadeusSessionWrapper);
@@ -593,6 +639,14 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
         String pnr = "";
         for (TravellerMasterInfo travellerMasterInfo : travellerMasterInfos) {
             pnrResponse = new PNRResponse();
+            if(travellerMasterInfo.getProvider().equalsIgnoreCase("Indigo")) {
+                pnrResponse = indigoFlightService.checkFareChangeAndAvailability(travellerMasterInfo);
+                pnrResponses.add(pnrResponse);
+                if (isFirstSegmentSell) {
+                    return pnrResponses.get(0);
+                }
+                continue;
+            }
             try {
                 officeId = getSpecificOfficeIdforAirline(travellerMasterInfo.getItinerary());
                 boolean isDelIdAirline = isDelIdAirlines(travellerMasterInfo);
@@ -616,7 +670,9 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                 if (isFirstSegmentSell) {
                     gdsPNRReply = serviceHandler.retrievePNR(pnr, amadeusSessionWrapper);
                 }
+                System.out.println("Office Id : " + officeId);
                 checkFlightAvailibility(travellerMasterInfo, pnrResponse, amadeusSessionWrapper);
+                System.out.println("Flight Available : " + pnrResponse.isFlightAvailable());
                 if (pnrResponse.isFlightAvailable()) {
                     gdsPNRReply = serviceHandler.addTravellerInfoToPNR(travellerMasterInfo, amadeusSessionWrapper);
                     /* Benzy changes */
@@ -701,7 +757,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                     } else {
                         setLastTicketingDate(pricePNRReply, pnrResponse, travellerMasterInfo);
                         String benzyOfficeId = amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId().toString();
-                        if (travellerMasterInfo.getSearchSelectOfficeId().equalsIgnoreCase(benzyOfficeId)) {
+                        if (travellerMasterInfo.getSearchSelectOfficeId()!=null && travellerMasterInfo.getSearchSelectOfficeId().equalsIgnoreCase(benzyOfficeId)) {
                             boolean seamen = travellerMasterInfo.isSeamen();
                             List<HashMap> miniRule = new ArrayList<>();
                             FlightItinerary flightItinerary = travellerMasterInfo.getItinerary();

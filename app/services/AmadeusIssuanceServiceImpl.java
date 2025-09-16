@@ -25,6 +25,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import play.Configuration;
 import play.Play;
+import play.libs.Json;
+import services.indigo.IndigoFlightService;
 import utils.AmadeusBookingHelper;
 import utils.AmadeusHelper;
 import utils.AmadeusSessionManager;
@@ -56,6 +58,8 @@ public class AmadeusIssuanceServiceImpl {
 
     @Autowired
     private AmadeusSourceOfficeService amadeusSourceOfficeService;
+    @Autowired
+    private IndigoFlightService indigoFlightService;
 
     @Autowired
     public AmadeusIssuanceServiceImpl(AmadeusSessionManager amadeusSessionManager) {
@@ -79,6 +83,24 @@ public class AmadeusIssuanceServiceImpl {
             }
         }
         return null;
+    }
+
+    public IssuanceResponse splitTicketPriceBooking(IssuanceRequest issuanceRequest) {
+        FlightItinerary flightItinerary = issuanceRequest.getFlightItinerary();
+        List<IssuanceResponse> issuanceResponses = new ArrayList<>();
+        IssuanceResponse amadeusIssuanceResponse = null;
+        for (Journey journey: flightItinerary.getJourneyList()) {
+            if (journey.getProvider().equalsIgnoreCase("Amadeus")) {
+                amadeusIssuanceResponse = priceBookedPNR(issuanceRequest);
+                logger.info("amadeusIssuanceResponse "+ Json.toJson(amadeusIssuanceResponse));
+                issuanceResponses.add(amadeusIssuanceResponse);
+            }
+            if(journey.getProvider().equalsIgnoreCase("Indigo")) {
+                IssuanceResponse issuanceResponse = indigoFlightService.priceBookedPNR(issuanceRequest);
+                issuanceResponses.add(issuanceResponse);
+            }
+        }
+        return amadeusIssuanceResponse;
     }
 
     public IssuanceResponse priceBookedPNR(IssuanceRequest issuanceRequest) {
@@ -115,6 +137,9 @@ public class AmadeusIssuanceServiceImpl {
             //serviceHandler = new ServiceHandler();
             amadeusSessionWrapper = serviceHandler.logIn(pricingOfficeId, true);
             PNRReply gdsPNRReply = serviceHandler.retrievePNR(issuanceRequest.getGdsPNR(), amadeusSessionWrapper);
+
+            FlightItinerary flightItinerary = issuanceRequest.getFlightItinerary();
+            List<Journey> journeyList = issuanceRequest.isSeamen() ? flightItinerary.getJourneyList() : flightItinerary.getNonSeamenJourneyList();
 
             List<String> segmentStatusList = segmentStatus(gdsPNRReply);
             if (segmentStatusList.contains("HX")) {
@@ -205,7 +230,7 @@ public class AmadeusIssuanceServiceImpl {
                     pricePNRReply = serviceHandler.priceSplitTicketPNR(carrierCode, gdsPNRReply,
                             issuanceRequest.isSeamen(), isDomestic, issuanceRequest.getFlightItinerary(), airSegment, isSegmentWisePricing, amadeusSessionWrapper, isAddBooking,journeyIndex);
 
-                    Map<String, String> fareComponentMap = AmadeusBookingHelper.getFareComponentMapFromPricePNRWithBookingClass(pricePNRReply);
+                    Map<String, String> fareComponentMap = AmadeusBookingHelper.getFareComponentMapFromPricePNRWithBookingClass(pricePNRReply,journeyList);
                     Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap = amadeusBookingHelper.getFareRuleTxtMapFromPricingAndFc(amadeusSessionWrapper, fareComponentMap);
                     issuanceResponse.setFareCheckRulesResponseMap(fareCheckRulesResponseMap);
 
@@ -242,7 +267,8 @@ public class AmadeusIssuanceServiceImpl {
                         }
                         pricePNRReply = serviceHandler.pricePNR(carrierCode, gdsPNRReply, issuanceRequest.isSeamen(), isDomestic, issuanceRequest.getFlightItinerary(), airSegment, isSegmentWisePricing, benzyAmadeusSessionWrapper, isAddBooking);
 
-                        Map<String, String> fareComponentMapBenzy = AmadeusBookingHelper.getFareComponentMapFromPricePNRWithBookingClass(pricePNRReply);
+
+                        Map<String, String> fareComponentMapBenzy = AmadeusBookingHelper.getFareComponentMapFromPricePNRWithBookingClass(pricePNRReply,journeyList);
                         Map<String, FareCheckRulesResponse> fareCheckRulesResponseMapBenzy = amadeusBookingHelper.getFareRuleTxtMapFromPricingAndFc(benzyAmadeusSessionWrapper, fareComponentMapBenzy);
                         issuanceResponse.setFareCheckRulesResponseMap(fareCheckRulesResponseMapBenzy);
 
@@ -308,7 +334,8 @@ public class AmadeusIssuanceServiceImpl {
                 }
                 pricePNRReply = serviceHandler.pricePNR(validatingCarrierCode, gdsPNRReply, issuanceRequest.isSeamen(), isDomestic, issuanceRequest.getFlightItinerary(), airSegmentList, isSegmentWisePricing, amadeusSessionWrapper, isAddBooking);
 
-                Map<String, String> fareComponentMap = AmadeusBookingHelper.getFareComponentMapFromPricePNRWithBookingClass(pricePNRReply);
+
+                Map<String, String> fareComponentMap = AmadeusBookingHelper.getFareComponentMapFromPricePNRWithBookingClass(pricePNRReply,journeyList);
                 Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap = amadeusBookingHelper.getFareRuleTxtMapFromPricingAndFc(amadeusSessionWrapper, fareComponentMap);
                 issuanceResponse.setFareCheckRulesResponseMap(fareCheckRulesResponseMap);
 
@@ -347,7 +374,8 @@ public class AmadeusIssuanceServiceImpl {
                     pricePNRReply = serviceHandler.pricePNR(validatingCarrierCode, gdsPNRReply, issuanceRequest.isSeamen(), isDomestic, issuanceRequest.getFlightItinerary(), airSegmentList, isSegmentWisePricing, benzyAmadeusSessionWrapper, isAddBooking);
 
                     try {
-                        Map<String, String> fareComponentMapBenzy = AmadeusBookingHelper.getFareComponentMapFromPricePNRWithBookingClass(pricePNRReply);
+
+                        Map<String, String> fareComponentMapBenzy = AmadeusBookingHelper.getFareComponentMapFromPricePNRWithBookingClass(pricePNRReply,journeyList);
                         Map<String, FareCheckRulesResponse> fareCheckRulesResponseMapBenzy = amadeusBookingHelper.getFareRuleTxtMapFromPricingAndFc(benzyAmadeusSessionWrapper, fareComponentMapBenzy);
                         issuanceResponse.setFareCheckRulesResponseMap(fareCheckRulesResponseMapBenzy);
                     } catch (Exception e) {
