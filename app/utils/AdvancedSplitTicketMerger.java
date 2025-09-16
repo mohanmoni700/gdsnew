@@ -690,7 +690,15 @@ public class AdvancedSplitTicketMerger {
                 if (totalPricing.getAdtTotalPrice() != null && currentPricing.getAdtTotalPrice() != null) {
                     totalPricing.setAdtTotalPrice(totalPricing.getAdtTotalPrice().add(currentPricing.getAdtTotalPrice()));
                 }
-                
+
+                if (totalPricing.getChdBasePrice() != null && currentPricing.getChdBasePrice() != null) {
+                    totalPricing.setChdBasePrice(totalPricing.getChdBasePrice().add(currentPricing.getChdBasePrice()));
+                }
+
+                if (totalPricing.getChdTotalPrice() != null && currentPricing.getChdTotalPrice() != null) {
+                    totalPricing.setChdTotalPrice(totalPricing.getChdTotalPrice().add(currentPricing.getChdTotalPrice()));
+                }
+
                 if (totalPricing.getTotalPrice() != null && currentPricing.getTotalPrice() != null) {
                     totalPricing.setTotalPrice(totalPricing.getTotalPrice().add(currentPricing.getTotalPrice()));
                 }

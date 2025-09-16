@@ -136,6 +136,74 @@ public class AmadeusBookingHelper {
         return errors;
     }
 
+    public static void checkSplitFare(FarePricePNRWithBookingClassReply pricePNRReply, PNRResponse pnrResponse, TravellerMasterInfo travellerMasterInfo, int index) {
+
+        // TODO: re-factor
+        int adultCount = 0, childCount = 0, infantCount = 0;
+        for (Traveller traveller : travellerMasterInfo.getTravellersList()) {
+            PassengerTypeCode passengerType;
+            if (traveller.getPassportDetails() != null) {
+                passengerType = DateUtility.getPassengerTypeFromDOB(traveller.getPassportDetails().getDateOfBirth());
+            } else {
+                passengerType = PassengerTypeCode.ADT;
+            }
+            if (passengerType.equals(PassengerTypeCode.ADT) || passengerType.equals(PassengerTypeCode.SEA)) {
+                adultCount++;
+            } else if (passengerType.equals(PassengerTypeCode.CHD)) {
+                childCount++;
+            } else {
+                infantCount++;
+            }
+        }
+        BigDecimal totalFare = new BigDecimal(0);
+        BigDecimal baseFare = new BigDecimal(0);
+
+        int numberOfTst = (travellerMasterInfo.isSeamen()) ? 1
+                : AmadeusBookingHelper.getNumberOfTST(travellerMasterInfo.getTravellersList());
+        List<FarePricePNRWithBookingClassReply.FareList> fareList = new ArrayList<>();
+        if (pricePNRReply.getFareList().size() != numberOfTst) {
+            fareList = pricePNRReply.getFareList().subList(0, numberOfTst);
+        } else {
+            fareList = pricePNRReply.getFareList();
+        }
+        PricingInformation pricingInformation = getPricingInfo(fareList, adultCount, childCount, infantCount);
+
+        totalFare = pricingInformation.getTotalPrice();
+        baseFare = pricingInformation.getBasePrice();
+        pnrResponse.setPricingInfo(pricingInformation);
+
+        BigDecimal searchPrice = new BigDecimal(0);
+        if (travellerMasterInfo.isSeamen()) {
+            searchPrice = travellerMasterInfo.getItinerary().getSeamanPricingInformation().getTotalPriceValue();
+        } else {
+            searchPrice = travellerMasterInfo.getItinerary().getPricingInformation().getTotalPriceValue();
+        }
+        if (travellerMasterInfo.getItinerary().isSplitTicket()) {
+            List<PricingInformation> splitPricingInformationList = travellerMasterInfo.getItinerary().getSplitPricingInformationList();
+            PricingInformation splitPricing = splitPricingInformationList.get(index);
+            searchPrice = splitPricing.getTotalPriceValue();
+        }
+        if (totalFare.compareTo(searchPrice) > 0) {
+            System.out.println("Changed price is high");
+            pnrResponse.setPriceChanged(false);
+            pnrResponse.setChangedPriceHigh(true);
+            return;
+        }
+
+        logger.debug("Total price before comparing :" + searchPrice + " changed Price : " + totalFare);
+        if (totalFare.compareTo(searchPrice) == 0) {
+            logger.debug("inside comparison 1111111111111111");
+            pnrResponse.setPriceChanged(false);
+            return;
+        }
+        pnrResponse.setChangedPrice(totalFare);
+        pnrResponse.setChangedBasePrice(baseFare);
+        pnrResponse.setOriginalPrice(searchPrice);
+        pnrResponse.setPriceChanged(true);
+        pnrResponse.setFlightAvailable(true);
+
+    }
+
     public static void checkFare(FarePricePNRWithBookingClassReply pricePNRReply, PNRResponse pnrResponse, TravellerMasterInfo travellerMasterInfo) {
 
         // TODO: re-factor

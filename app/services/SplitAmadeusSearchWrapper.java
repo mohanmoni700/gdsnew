@@ -521,11 +521,11 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
         AirSolution airSolution = new AirSolution();
         logger.debug("#####################errorMessage is null");
         if (searchParameters.getBookingType() == BookingType.SEAMEN && seamenErrorMessage == null) {
-            airSolution.setSeamenHashMap(getFlightItineraryHashmap(seamenReply,office, true));
+            airSolution.setSeamenHashMap(getFlightItineraryHashmap(seamenReply,office, true,searchParameters));
         }
 
         if (searchParameters.getBookingType() == BookingType.NON_MARINE && errorMessage == null) {
-            airSolution.setNonSeamenHashMap(getFlightItineraryHashmap(fareMasterPricerTravelBoardSearchReply, office, false));
+            airSolution.setNonSeamenHashMap(getFlightItineraryHashmap(fareMasterPricerTravelBoardSearchReply, office, false,searchParameters));
         }
         searchResponse.setAirSolution(airSolution);
         searchResponse.setProvider(provider());
@@ -595,11 +595,11 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
         AirSolution airSolution = new AirSolution();
         logger.debug("#####################errorMessage is null");
         if (searchParameters.getBookingType() == BookingType.SEAMEN && seamenErrorMessage == null) {
-            airSolution.setSeamenHashMap(getFlightItineraryHashmap(seamenReply,office, true));
+            airSolution.setSeamenHashMap(getFlightItineraryHashmap(seamenReply,office, true, searchParameters));
         }
 
         if(searchParameters.getBookingType() == BookingType.NON_MARINE && errorMessage == null) {
-            airSolution.setNonSeamenHashMap(getFlightItineraryHashmap(fareMasterPricerTravelBoardSearchReply, office,false));
+            airSolution.setNonSeamenHashMap(getFlightItineraryHashmap(fareMasterPricerTravelBoardSearchReply, office,false, searchParameters));
         }
         searchResponse.setAirSolution(airSolution);
         searchResponse.setProvider(provider());
@@ -649,7 +649,7 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
         return sourceOfficeService.getAllOffices();
     }
 
-    private ConcurrentHashMap<Integer, FlightItinerary> getFlightItineraryHashmap(FareMasterPricerTravelBoardSearchReply fareMasterPricerTravelBoardSearchReply, FlightSearchOffice office, boolean isSeamen) {
+    private ConcurrentHashMap<Integer, FlightItinerary> getFlightItineraryHashmap(FareMasterPricerTravelBoardSearchReply fareMasterPricerTravelBoardSearchReply, FlightSearchOffice office, boolean isSeamen, SearchParameters searchParameters) {
         ConcurrentHashMap<Integer, FlightItinerary> flightItineraryHashMap = new ConcurrentHashMap<>();
         try{
             String currency = fareMasterPricerTravelBoardSearchReply.getConversionRate().getConversionRateDetail().get(0).getCurrency();
@@ -658,7 +658,7 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
                 for (ReferenceInfoType segmentRef : recommendation.getSegmentFlightRef()) {
                     FlightItinerary flightItinerary = new FlightItinerary();
                     flightItinerary.setPassportMandatory(false);
-                    flightItinerary.setPricingInformation(getPricingInformation(recommendation));
+                    flightItinerary.setPricingInformation(getPricingInformation(recommendation,searchParameters,isSeamen));
                     flightItinerary.getPricingInformation().setGdsCurrency(currency);
                     flightItinerary.getPricingInformation().setPricingOfficeId(office.getOfficeId());
                     List<String> contextList = getAvailabilityCtx(segmentRef, recommendation.getSpecificRecDetails());
@@ -863,7 +863,7 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
         return airSegmentInformation;
     }
 
-    private PricingInformation getPricingInformation(FareMasterPricerTravelBoardSearchReply.Recommendation recommendation) {
+    private PricingInformation getPricingInformation(FareMasterPricerTravelBoardSearchReply.Recommendation recommendation, SearchParameters searchParameters, boolean isSeamen) {
         PricingInformation pricingInformation = new PricingInformation();
         pricingInformation.setProvider("Amadeus");
         List<MonetaryInformationDetailsType> monetaryDetails = recommendation.getRecPriceInfo().getMonetaryDetail();
@@ -889,6 +889,13 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
                 passengerTax.setPassengerType("ADT");
                 passengerTax.setTotalTax(tax);
                 passengerTax.setPassengerCount(paxCount);
+                if (searchParameters.getChildCount()>0 && isSeamen) {
+                    pricingInformation.setChdBasePrice(baseFare);
+                    pricingInformation.setChdTotalPrice(amount);
+                    passengerTax.setPassengerType("CHD");
+                    passengerTax.setTotalTax(tax);
+                    passengerTax.setPassengerCount(paxCount);
+                }
             } else if(paxType.equalsIgnoreCase("CHD")) {
 //				pricingInformation.setChdBasePrice(baseFare.multiply(new BigDecimal(paxCount)));
                 pricingInformation.setChdBasePrice(baseFare);
