@@ -201,6 +201,20 @@ public class ReIssueFlightSearchImpl implements ReIssueFlightSearch {
 
             logger.debug("Execution time in getting session:: {} seconds", duration / 1000);
 
+            if (amadeusSessionWrapper == null || amadeusSessionWrapper.getmSession() == null ||
+                    amadeusSessionWrapper.getmSession().value == null ||
+                    amadeusSessionWrapper.getmSession().value.getSessionId() == null ||
+                    amadeusSessionWrapper.getmSession().value.getSessionId().isEmpty()) {
+
+                logger.warn("Session is null or has null session ID, creating new session For Reissue");
+                amadeusSessionWrapper = amadeusSessionManager.createSession(office);
+
+                if (amadeusSessionWrapper == null) {
+                    logger.error("Failed to create new Amadeus session For Reissue");
+                    throw new Exception("Failed to create new Amadeus session For Reissue");
+                }
+            }
+
             if (reIssueSearchRequest.isSeaman()) {
                 seamenReply = serviceHandler.reIssueATCAirlineSearch(reIssueSearchRequest, allowedCarriers, amadeusSessionWrapper);
             } else {

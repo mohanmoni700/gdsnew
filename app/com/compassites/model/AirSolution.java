@@ -28,7 +28,6 @@ public class AirSolution {
 
     private ConcurrentHashMap<String, List<Integer>> groupingKeyMap;
 
-    @JsonIgnore
     private ConcurrentHashMap<Integer, FlightItinerary> seamenHashMap;
 
     private ConcurrentHashMap<Integer, FlightItinerary> nonSeamenHashMap;

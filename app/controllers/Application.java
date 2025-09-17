@@ -268,6 +268,7 @@ public class Application {
         travellerMasterInfo.setAdtultCount(adultCount);
         travellerMasterInfo.setChildCount(childCount);
         travellerMasterInfo.setInfantCount(infantCount);
+        travellerMasterInfo.setSeamen(seamen);
     	FlightItinerary response = null;
     	try {
             logger.info("Baggage info "+Json.toJson(flightItinerary));
