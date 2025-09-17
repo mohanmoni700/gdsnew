@@ -8,6 +8,7 @@ import dto.reissue.ReIssueConfirmationRequest;
 import dto.reissue.ReIssueSearchRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import services.indigo.IndigoFlightService;
 
 @Component
 public class ReIssueServiceWrapper implements ReIssueService {
@@ -15,12 +16,17 @@ public class ReIssueServiceWrapper implements ReIssueService {
     @Autowired
     AmadeusReissueService amadeusReissueService;
 
+    @Autowired
+    IndigoFlightService indigoFlightService;
+
     @Override
     public SearchResponse reIssueTicket(ReIssueSearchRequest reIssueSearchRequest){
 
         SearchResponse reIssueTicketResponse = null;
         if(reIssueSearchRequest.getProvider().equals("Amadeus")){
             reIssueTicketResponse = amadeusReissueService.reIssueTicket(reIssueSearchRequest);
+        } else if(reIssueSearchRequest.getProvider().equals("Indigo")) {
+            reIssueTicketResponse = indigoFlightService.getReissueSearchResponse(reIssueSearchRequest);
         }
 
         return  reIssueTicketResponse;

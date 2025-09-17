@@ -1,11 +1,8 @@
 package services.indigo;
 
-import com.compassites.model.AncillaryServicesResponse;
-import com.compassites.model.IssuanceRequest;
-import com.compassites.model.IssuanceResponse;
-import com.compassites.model.PNRResponse;
+import com.compassites.model.*;
 import com.compassites.model.traveller.TravellerMasterInfo;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import dto.reissue.ReIssueSearchRequest;
 
 public interface IndigoFlightService {
     public PNRResponse checkFareChangeAndAvailability(TravellerMasterInfo travellerMasterInfo);
@@ -13,4 +10,6 @@ public interface IndigoFlightService {
     public IssuanceResponse priceBookedPNR(IssuanceRequest issuanceRequest);
     public IssuanceResponse issueTicket(IssuanceRequest issuanceRequest);
     public AncillaryServicesResponse getAvailableAncillaryServices(TravellerMasterInfo travellerMasterInfo);
+
+    SearchResponse getReissueSearchResponse(ReIssueSearchRequest reIssueSearchRequest);
 }

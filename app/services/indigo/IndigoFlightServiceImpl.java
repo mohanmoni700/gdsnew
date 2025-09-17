@@ -4,6 +4,7 @@ import com.compassites.model.*;
 import com.compassites.model.traveller.TravellerMasterInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dto.reissue.ReIssueSearchRequest;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,8 +12,11 @@ import org.springframework.stereotype.Service;
 import play.Play;
 import play.libs.Json;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Service
-public class IndigoFlightServiceImpl implements IndigoFlightService{
+public class IndigoFlightServiceImpl implements IndigoFlightService {
 
     static Logger logger = LoggerFactory.getLogger("gds");
 
@@ -27,7 +31,7 @@ public class IndigoFlightServiceImpl implements IndigoFlightService{
             ObjectMapper objectMapper = new ObjectMapper();
             String jsonString = objectMapper.writeValueAsString(travellerMasterInfo);
             RequestBody requestBody = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
-            Request request = new Request.Builder().url(endPoint+"checkFare").post(requestBody).build();
+            Request request = new Request.Builder().url(endPoint + "checkFare").post(requestBody).build();
             try (Response response = client.newCall(request).execute()) {
                 if (response.isSuccessful()) {
                     String responseBody = response.body().string();
@@ -35,13 +39,13 @@ public class IndigoFlightServiceImpl implements IndigoFlightService{
                     return objectMapper.readValue(responseBody, PNRResponse.class);
                 } else {
                     logger.error("Failed to fetch data from Indigo API: " + response.message() +
-                        " for traveller info: " + Json.toJson(travellerMasterInfo));
+                            " for traveller info: " + Json.toJson(travellerMasterInfo));
                     throw new Exception("Failed to fetch data from Indigo API: " + response.message());
                 }
             }
         } catch (Exception e) {
             logger.error("Error during Indigo fare change check: " + e.getMessage() +
-                " for traveller info: " + Json.toJson(travellerMasterInfo), e);
+                    " for traveller info: " + Json.toJson(travellerMasterInfo), e);
             throw new RuntimeException(e);
         }
     }
@@ -52,7 +56,7 @@ public class IndigoFlightServiceImpl implements IndigoFlightService{
             ObjectMapper objectMapper = new ObjectMapper();
             String jsonString = objectMapper.writeValueAsString(travellerMasterInfo);
             RequestBody requestBody = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
-            Request request = new Request.Builder().url(endPoint+"generatePNR").post(requestBody).build();
+            Request request = new Request.Builder().url(endPoint + "generatePNR").post(requestBody).build();
             try (Response response = client.newCall(request).execute()) {
                 if (response.isSuccessful()) {
                     String responseBody = response.body().string();
@@ -60,7 +64,7 @@ public class IndigoFlightServiceImpl implements IndigoFlightService{
                     return objectMapper.readValue(responseBody, PNRResponse.class);
                 } else {
                     logger.error("Failed to fetch data from Indigo API: " + response.message() +
-                        " for traveller info: " + Json.toJson(travellerMasterInfo));
+                            " for traveller info: " + Json.toJson(travellerMasterInfo));
                     throw new Exception("Failed to fetch data from Indigo API: " + response.message());
                 }
             }
@@ -78,7 +82,7 @@ public class IndigoFlightServiceImpl implements IndigoFlightService{
             ObjectMapper objectMapper = new ObjectMapper();
             String jsonString = objectMapper.writeValueAsString(issuanceRequest);
             RequestBody requestBody = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
-            Request request = new Request.Builder().url(endPoint+"priceBookedPNR").post(requestBody).build();
+            Request request = new Request.Builder().url(endPoint + "priceBookedPNR").post(requestBody).build();
             try (Response response = client.newCall(request).execute()) {
                 if (response.isSuccessful()) {
                     String responseBody = response.body().string();
@@ -104,7 +108,7 @@ public class IndigoFlightServiceImpl implements IndigoFlightService{
             ObjectMapper objectMapper = new ObjectMapper();
             String jsonString = objectMapper.writeValueAsString(issuanceRequest);
             RequestBody requestBody = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
-            Request request = new Request.Builder().url(endPoint+"issueTicket").post(requestBody).build();
+            Request request = new Request.Builder().url(endPoint + "issueTicket").post(requestBody).build();
             try (Response response = client.newCall(request).execute()) {
                 if (response.isSuccessful()) {
                     String responseBody = response.body().string();
@@ -130,7 +134,7 @@ public class IndigoFlightServiceImpl implements IndigoFlightService{
             ObjectMapper objectMapper = new ObjectMapper();
             String jsonString = objectMapper.writeValueAsString(travellerMasterInfo);
             RequestBody requestBody = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
-            Request request = new Request.Builder().url(endPoint+"showAdditionalBaggageInfoStandalone").post(requestBody).build();
+            Request request = new Request.Builder().url(endPoint + "showAdditionalBaggageInfoStandalone").post(requestBody).build();
             try (Response response = client.newCall(request).execute()) {
                 if (response.isSuccessful()) {
                     String responseBody = response.body().string();
@@ -148,4 +152,51 @@ public class IndigoFlightServiceImpl implements IndigoFlightService{
         }
         return null;
     }
+
+    @Override
+    public SearchResponse getReissueSearchResponse(ReIssueSearchRequest reIssueSearchRequest) {
+
+        logger.info("Indigo Reissue Search request: {}", Json.toJson(reIssueSearchRequest));
+
+        SearchResponse searchResponse = new SearchResponse();
+        searchResponse.setReIssueSearch(true);
+
+        List<ErrorMessage> errorMessageList = new ArrayList<>();
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+
+            String reIssueSearchRequestJsonString = objectMapper.writeValueAsString(reIssueSearchRequest);
+            RequestBody requestBody = RequestBody.create(reIssueSearchRequestJsonString, MediaType.get("application/json; charset=utf-8"));
+
+            Request request = new Request.Builder().url(endPoint + "reIssueSearch").post(requestBody).build();
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful() && response.body() != null) {
+                    String responseBody = response.body().string();
+
+                    searchResponse = objectMapper.readValue(responseBody, SearchResponse.class);
+
+                } else {
+                    ErrorMessage errorMessage = new ErrorMessage();
+                    errorMessage.setErrorCode("Error While Searching For ReIssuable flights");
+                    errorMessageList.add(errorMessage);
+
+                    searchResponse.setErrorMessageList(errorMessageList);
+                }
+
+                return searchResponse;
+            }
+
+        } catch (Exception exception) {
+            logger.debug("Exception while Searching for ReIssuable flights");
+
+            ErrorMessage errorMessage = new ErrorMessage();
+            errorMessage.setErrorCode("Error While Searching For ReIssuable flights");
+            errorMessageList.add(errorMessage);
+
+            searchResponse.setErrorMessageList(errorMessageList);
+            return searchResponse;
+        }
+    }
+
 }

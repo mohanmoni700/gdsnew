@@ -3,8 +3,6 @@ package services.reissue;
 import com.amadeus.xml._2010._06.fareinternaltypes_v2.PricingRecordType;
 import com.amadeus.xml._2010._06.retailing_types_v2.*;
 import com.amadeus.xml._2010._06.ticket_rebookandrepricepnr_v1.AMATicketRebookAndRepricePNRRS;
-import com.amadeus.xml.pnracc_14_1_1a.PNRReply;
-import com.amadeus.xml.ttstrr_13_1_1a.TicketDisplayTSTReply;
 import com.compassites.GDSWrapper.amadeus.ReIssueConfirmationHandler;
 import com.compassites.GDSWrapper.amadeus.ServiceHandler;
 import com.compassites.model.*;
@@ -19,7 +17,7 @@ import utils.*;
 import java.util.*;
 
 @Component
-public class ReIssueBookingServiceImpl implements ReIssueBookingService {
+public class AmadeusReIssueBookingServiceImpl implements ReIssueBookingService {
 
     private final ReIssueConfirmationHandler reIssueConfirmationHandler;
     private final ServiceHandler commonServiceHandler;
@@ -27,8 +25,8 @@ public class ReIssueBookingServiceImpl implements ReIssueBookingService {
     private final ReIssueHelper reIssueHelper;
 
     @Autowired
-    public ReIssueBookingServiceImpl(ReIssueConfirmationHandler reIssueConfirmationHandler, ServiceHandler commonServiceHandler,
-                                     AmadeusSessionManager amadeusSessionManager, ReIssueHelper reIssueHelper) {
+    public AmadeusReIssueBookingServiceImpl(ReIssueConfirmationHandler reIssueConfirmationHandler, ServiceHandler commonServiceHandler,
+                                            AmadeusSessionManager amadeusSessionManager, ReIssueHelper reIssueHelper) {
 
         this.reIssueConfirmationHandler = reIssueConfirmationHandler;
         this.commonServiceHandler = commonServiceHandler;

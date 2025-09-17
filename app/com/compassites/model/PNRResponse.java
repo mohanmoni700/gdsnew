@@ -60,6 +60,16 @@ public class PNRResponse implements Serializable  {
 
     private List<AirlineSpecificQueueAndTimeLimitDetails> airlineSpecificQueueAndTimeLimitDetailsList;
 
+    private List<IndigoPaxNumber> indigoPaxNumbers;
+
+    public List<IndigoPaxNumber> getIndigoPaxNumbers() {
+        return indigoPaxNumbers;
+    }
+
+    public void setIndigoPaxNumbers(List<IndigoPaxNumber> indigoPaxNumbers) {
+        this.indigoPaxNumbers = indigoPaxNumbers;
+    }
+
     public String getExpirationDate() {
         return expirationDate;
     }
@@ -135,6 +145,16 @@ public class PNRResponse implements Serializable  {
     private boolean nonOfficeId;
 
     private boolean isTicketPresent;
+
+    private String childPnr;
+
+    public String getChildPnr() {
+        return childPnr;
+    }
+
+    public void setChildPnr(String childPnr) {
+        this.childPnr = childPnr;
+    }
 
     public Map<String, String> getPnrMap() {
         return pnrMap;
