@@ -675,9 +675,9 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                 if (officeId.equals(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId()) && !isBATK(travellerMasterInfo)) {
                     officeId = amadeusSourceOfficeService.getDelhiSourceOffice().getOfficeId();
                 }
-                Journey journey = travellerMasterInfo.getItinerary().getJourneyList().get(index);
-                List<Journey> newFareJourneyList = new ArrayList<>();
-                newFareJourneyList.add(journey);
+                //Journey journey = travellerMasterInfo.getItinerary().getJourneyList().get(index);
+                List<Journey> newFareJourneyList = travellerMasterInfo.getItinerary().getJourneyList();
+                //newFareJourneyList.add(journey);
                 amadeusSessionWrapper = serviceHandler.logIn(officeId, true);
                 PNRReply gdsPNRReply = null;
                 if (isFirstSegmentSell) {

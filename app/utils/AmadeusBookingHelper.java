@@ -2093,7 +2093,7 @@ public class AmadeusBookingHelper {
                         Set<String> segmentList = new HashSet<>();
 
                         for (Journey journey : journeyList) {
-                            if (journey != null) {
+                            if (journey != null && !journey.getProvider().equalsIgnoreCase("Indigo")) {
                                 List<AirSegmentInformation> airSegmentList= journey.getAirSegmentList();
                                 if (airSegmentList != null && !airSegmentList.isEmpty()) {
                                     for (AirSegmentInformation airSegmentInformation : airSegmentList) {
