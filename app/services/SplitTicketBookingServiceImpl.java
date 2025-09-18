@@ -20,6 +20,7 @@ import com.compassites.model.*;
 import com.compassites.model.amadeus.AmadeusPaxInformation;
 import com.compassites.model.traveller.Traveller;
 import com.compassites.model.traveller.TravellerMasterInfo;
+import dto.FareCheckRulesResponse;
 import ennum.ConfigMasterConstants;
 import models.AmadeusSessionWrapper;
 import org.apache.commons.lang3.SerializationUtils;
@@ -52,7 +53,8 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
     @Autowired
     private AmadeusSessionManager amadeusSessionManager;
 
-
+    @Autowired
+    private AmadeusBookingHelper amadeusBookingHelper;
     @Autowired
     private AmadeusTicketCancelDocumentServiceImpl amadeusTicketCancelDocumentServiceImpl;
 
@@ -428,13 +430,14 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                     if (isDelIdAirline) {
                         officeId = amadeusSourceOfficeService.getDelhiSourceOffice().getOfficeId();
                     } else {
-                        officeId = travellerMasterInfo.getItinerary().getPricingInformation().getPricingOfficeId();
+                        officeId = configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey());
                     }
                 }
                 System.out.println("Off " + officeId);
             }
 
             officeId = configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey());
+            System.out.println("Off 2 " + officeId);
             /**
              * check for non batk and set booking office to BOM
              */
@@ -643,9 +646,14 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
             if(travellerMasterInfo.getProvider().equalsIgnoreCase("Indigo")) {
                 pnrResponse = indigoFlightService.checkFareChangeAndAvailability(travellerMasterInfo);
                 pnrResponse.setPriceChanged(false);
+                pnrResponse.setFareCheckRulesResponseMap(new HashMap<>());
                 pnrResponses.add(pnrResponse);
                 if (isFirstSegmentSell) {
-                    return pnrResponses.get(0);
+                    PNRResponse pnrResponse1 = pnrResponses.get(0);
+                    Map<String, String> stringStringMap = pnrResponse.getSegmentBaggageMap();
+                    stringStringMap.putAll(pnrResponse1.getSegmentBaggageMap());
+                    pnrResponse1.setSegmentBaggageMap(stringStringMap);
+                    return pnrResponse1;
                 }
                 continue;
             }
@@ -667,6 +675,9 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                 if (officeId.equals(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId()) && !isBATK(travellerMasterInfo)) {
                     officeId = amadeusSourceOfficeService.getDelhiSourceOffice().getOfficeId();
                 }
+                Journey journey = travellerMasterInfo.getItinerary().getJourneyList().get(index);
+                List<Journey> newFareJourneyList = new ArrayList<>();
+                newFareJourneyList.add(journey);
                 amadeusSessionWrapper = serviceHandler.logIn(officeId, true);
                 PNRReply gdsPNRReply = null;
                 if (isFirstSegmentSell) {
@@ -682,6 +693,16 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                     FarePricePNRWithBookingClassReply pricePNRReplyBenzy = null;
                     travellerMasterInfo.getItinerary().getPricingInformation().setSegmentWisePricing(true);
                     pricePNRReply = checkPNRPricingForSplit(travellerMasterInfo, gdsPNRReply, pricePNRReply, pnrResponse, amadeusSessionWrapper,index);
+                    if (pricePNRReply.getApplicationError() == null && travellerMasterInfo.getAdditionalInfo() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking() == null) {
+
+                        Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap;
+
+                        Map<String, String> fareComponentsMap = AmadeusBookingHelper.getFareComponentMapFromPricePNRWithBookingClass(pricePNRReply,newFareJourneyList);
+                        fareCheckRulesResponseMap = amadeusBookingHelper.getFareRuleTxtMapFromPricingAndFc(amadeusSessionWrapper, fareComponentsMap);
+                        pnrResponse.setFareCheckRulesResponseMap(fareCheckRulesResponseMap);
+
+
+                    }
                     int numberOfTst = (travellerMasterInfo.isSeamen()) ? 1 : getNumberOfTST(travellerMasterInfo.getTravellersList());
 
                     logger.debug(" gdsPNRReply " + Json.toJson(gdsPNRReply));
@@ -741,7 +762,14 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                         if (pnrResponse.getPricingInfo() != null)
                             pnrResponse.getPricingInfo().setPricingOfficeId(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId().toString());
                         FareCheckRulesReply fareCheckRulesReply = serviceHandler.getFareRules(benzyAmadeusSessionWrapper);
+                        Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap;
                         try {
+                            if (pricePNRReply.getApplicationError() == null && travellerMasterInfo.getAdditionalInfo() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking() == null) {
+                                Map<String, String> fareComponentsMap = AmadeusBookingHelper.getFareComponentMapFromPricePNRWithBookingClass(pricePNRReplyBenzy,newFareJourneyList);
+                                fareCheckRulesResponseMap = amadeusBookingHelper.getFareRuleTxtMapFromPricingAndFc(benzyAmadeusSessionWrapper, fareComponentsMap);
+                                pnrResponse.setFareCheckRulesResponseMap(fareCheckRulesResponseMap);
+
+                            }
                             Map<String, Map> benzyFareRulesMap = null;
                             if (fareCheckRulesReply.getErrorInfo() == null)
                                 benzyFareRulesMap = AmadeusHelper.getFareCheckRules(fareCheckRulesReply);
@@ -786,6 +814,11 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                                     String currency = reply.getMainGroup().getPricingGroupLevelGroup().get(0).getFareInfoGroup().getFareAmount().getOtherMonetaryDetails().get(0).getCurrency();
                                     FareCheckRulesReply fareCheckRulesReply = serviceHandler.getFareRules(amadeusSessionWrapper);
                                     try {
+                                        if (travellerMasterInfo.getAdditionalInfo() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking() == null) {
+                                            Map<String, String> fareComponentMap = AmadeusBookingHelper.getFareComponentMapFromFareInformativePricing(reply);
+                                            Map<String, FareCheckRulesResponse> fareCheckRuleMap = amadeusBookingHelper.getFareRuleTxtMapFromPricingAndFc(amadeusSessionWrapper, fareComponentMap);
+                                            pnrResponse.setFareCheckRulesResponseMap(fareCheckRuleMap);
+                                        }
                                         Map<String, Map> benzyFareRulesMap = AmadeusHelper.getFareCheckRules(fareCheckRulesReply);
                                         pnrResponse.setBenzyFareRuleMap(benzyFareRulesMap);
                                         pnrResponse.getPricingInfo().setPricingOfficeId(benzyOfficeId);
@@ -851,6 +884,15 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                     return pnrResponse;
                 }
                 pnrResponses.add(pnrResponse);
+                if (isFirstSegmentSell) {
+                    PNRResponse pnrResponse1 = pnrResponses.get(0);
+                    Map<String, String> stringStringMap = pnrResponse.getSegmentBaggageMap();
+                    Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap = pnrResponse.getFareCheckRulesResponseMap();
+                    stringStringMap.putAll(pnrResponse1.getSegmentBaggageMap());
+                    fareCheckRulesResponseMap.putAll(pnrResponse1.getFareCheckRulesResponseMap());
+                    pnrResponse.setSegmentBaggageMap(stringStringMap);
+                    pnrResponse.setFareCheckRulesResponseMap(fareCheckRulesResponseMap);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
                 isFirstSegmentSell = false;

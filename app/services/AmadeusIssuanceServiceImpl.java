@@ -509,14 +509,29 @@ public class AmadeusIssuanceServiceImpl {
         return false;
     }
 
+    private boolean isIndigoFlight(IssuanceRequest issuanceRequest) {
+        boolean isIndigoFlight = false;
+        for(Journey journey: issuanceRequest.getFlightItinerary().getJourneyList()) {
+            if(journey.getProvider().equalsIgnoreCase("Indigo")) {
+                isIndigoFlight = true;
+                break;
+            }
+        }
+        return isIndigoFlight;
+    }
     public IssuanceResponse issueTicket(IssuanceRequest issuanceRequest) {
         logger.debug("=======================  Issuance called =========================");
         //ServiceHandler serviceHandler = null;
         IssuanceResponse issuanceResponse = new IssuanceResponse();
         issuanceResponse.setPnrNumber(issuanceRequest.getGdsPNR());
         //Session session = null;
+        IssuanceResponse indigoIssuanceResponse = null;
         AmadeusSessionWrapper amadeusSessionWrapper = null;
         try {
+            if(issuanceRequest.getFlightItinerary().isSplitTicket() && isIndigoFlight(issuanceRequest)) {
+                System.out.println("Issuing Indigo Ticket First");
+                indigoIssuanceResponse = indigoFlightService.issueTicket(issuanceRequest);
+            }
             if (!issuanceRequest.isSeamen()) {
                 AmadeusSessionWrapper delhiSession = serviceHandler.logIn(amadeusSourceOfficeService.getDelhiSourceOffice().getOfficeId(), true);
 //                PNRReply gdsPNRReply = serviceHandler.savePNR(delhiSession);
@@ -525,6 +540,13 @@ public class AmadeusIssuanceServiceImpl {
                 amadeusLogger.debug("retrievePNRRes1 " + new Date() + " ------->>" + new XStream().toXML(gdsPNRReply));
 
                 issuanceResponse = docIssuance(serviceHandler, issuanceRequest, issuanceResponse, gdsPNRReply, delhiSession);
+                if (indigoIssuanceResponse!=null) {
+                    if (indigoIssuanceResponse.isSuccess() && indigoIssuanceResponse.isSuccess()) {
+                        issuanceResponse.setSuccess(true);
+                        issuanceResponse.setIssued(true);
+                        issuanceResponse.setSplitTicketNumberMap(indigoIssuanceResponse.getSplitTicketNumberMap());
+                    }
+                }
                 return issuanceResponse;
             }
 
@@ -534,6 +556,13 @@ public class AmadeusIssuanceServiceImpl {
 
                 PNRReply gdsPNRReply = serviceHandler.retrievePNR(issuanceRequest.getGdsPNR(), amadeusSessionWrapper);
                 issuanceResponse.setSuccess(false);
+                if (indigoIssuanceResponse!=null) {
+                    if (indigoIssuanceResponse.isSuccess() && indigoIssuanceResponse.isSuccess()) {
+                        issuanceResponse.setSuccess(true);
+                        issuanceResponse.setIssued(true);
+                        issuanceResponse.setSplitTicketNumberMap(indigoIssuanceResponse.getSplitTicketNumberMap());
+                    }
+                }
                 return issuanceResponse;
             }
             //serviceHandler = new ServiceHandler();
