@@ -2,8 +2,8 @@ package services.indigo;
 
 import com.compassites.model.*;
 import com.compassites.model.traveller.TravellerMasterInfo;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dto.refund.IndigoRefundRequest;
 import dto.reissue.ReIssueSearchRequest;
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -199,4 +199,65 @@ public class IndigoFlightServiceImpl implements IndigoFlightService {
         }
     }
 
+    @Override
+    public TicketCheckEligibilityRes processFullCancellation(String gdsPNR, String searchOfficeId, String ticketingOfficeId) {
+        logger.info("Indigo process reissue ticket request for PNR: " + gdsPNR);
+        try {
+            IndigoRefundRequest indigoRefundRequest = new IndigoRefundRequest();
+            indigoRefundRequest.setGdsPNR(gdsPNR);
+            indigoRefundRequest.setSearchOfficeId(searchOfficeId);
+            indigoRefundRequest.setTicketingOfficeId(ticketingOfficeId);
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jsonString = objectMapper.writeValueAsString(indigoRefundRequest);
+            RequestBody requestBody = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
+            Request request = new Request.Builder().url(endPoint + "fullRefundEligibility").post(requestBody).build();
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful()) {
+                    String responseBody = response.body().string();
+                    indigoLogger.info("Indigo Full Cancellation Response: " + responseBody);
+                    return objectMapper.readValue(responseBody, TicketCheckEligibilityRes.class);
+                } else {
+                    logger.error("Failed to fetch data from Indigo API: " + response.message() +
+                            " for issuance request: " + Json.toJson(indigoRefundRequest));
+                    throw new Exception("Failed to fetch data from Indigo API: " + response.message());
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error during Indigo full cancellation: " + e.getMessage() +
+                    " for PNR: " + gdsPNR, e);
+        }
+        return null;
+    }
+
+    public TicketProcessRefundRes processFullRefund(String gdsPNR, String searchOfficeId, String ticketingOfficeId,TravellerMasterInfo travellerMasterInfo) {
+        logger.info("Indigo process reissue ticket request for PNR processFullRefund : " + gdsPNR);
+        try {
+            IndigoRefundRequest indigoRefundRequest = new IndigoRefundRequest();
+            indigoRefundRequest.setGdsPNR(gdsPNR);
+            indigoRefundRequest.setSearchOfficeId(searchOfficeId);
+            indigoRefundRequest.setTicketingOfficeId(ticketingOfficeId);
+            indigoRefundRequest.setTravellerMasterInfo(travellerMasterInfo);
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jsonString = objectMapper.writeValueAsString(indigoRefundRequest);
+            RequestBody requestBody = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
+            Request request = new Request.Builder().url(endPoint + "fullRefund").post(requestBody).build();
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful()) {
+                    String responseBody = response.body().string();
+                    indigoLogger.info("Indigo Full Cancellation Response processFullRefund : " + responseBody);
+                    return objectMapper.readValue(responseBody, TicketProcessRefundRes.class);
+                } else {
+                    logger.error("Failed to fetch data from Indigo API processFullRefund: " + response.message() +
+                            " for issuance request: " + Json.toJson(indigoRefundRequest));
+                    throw new Exception("Failed to fetch data from Indigo API processFullRefund: " + response.message());
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error during Indigo full cancellation processFullRefund : " + e.getMessage() +
+                    " for PNR: " + gdsPNR, e);
+        }
+        return null;
+    }
 }

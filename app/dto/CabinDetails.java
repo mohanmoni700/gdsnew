@@ -1,6 +1,10 @@
 package dto;
 
-public class CabinDetails {
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class CabinDetails implements java.io.Serializable{
 
     private String rbd;
     private String cabin;

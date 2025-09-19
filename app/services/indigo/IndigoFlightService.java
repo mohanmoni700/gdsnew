@@ -12,4 +12,6 @@ public interface IndigoFlightService {
     public AncillaryServicesResponse getAvailableAncillaryServices(TravellerMasterInfo travellerMasterInfo);
 
     SearchResponse getReissueSearchResponse(ReIssueSearchRequest reIssueSearchRequest);
+    public TicketCheckEligibilityRes processFullCancellation(String gdsPNR, String searchOfficeId, String ticketingOfficeId);
+    public TicketProcessRefundRes processFullRefund(String gdsPNR, String searchOfficeId, String ticketingOfficeId,TravellerMasterInfo travellerMasterInfo);
 }

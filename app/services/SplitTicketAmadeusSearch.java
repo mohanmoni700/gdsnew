@@ -8,11 +8,9 @@ import com.compassites.model.*;
 import com.sun.xml.ws.client.ClientTransportException;
 import com.sun.xml.ws.fault.ServerSOAPFaultException;
 import com.thoughtworks.xstream.XStream;
+import dto.CabinDetails;
 import ennum.ConfigMasterConstants;
-import models.Airline;
-import models.Airport;
-import models.AmadeusSessionWrapper;
-import models.FlightSearchOffice;
+import models.*;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Minutes;
@@ -33,11 +31,11 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static com.compassites.model.PROVIDERS.AMADEUS;
+import static java.lang.String.valueOf;
 
 @Service
 public class SplitTicketAmadeusSearch implements SplitTicketSearch{
@@ -67,6 +65,14 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
 
     //private String searchOfficeID = play.Play.application().configuration().getString("split.ticket.officeId");
     private static String searchOfficeID = "";
+    private static final Map<String,String> cabinMap = new HashMap<>();
+    static {
+        cabinMap.put("C","BUSINESS");
+        cabinMap.put("F","FIRST");
+        cabinMap.put("Y","ECONOMIC");
+        cabinMap.put("W","ECONOMIC PREMIUM");
+        cabinMap.put("M","ECONOMIC STANDARD");
+    }
     static org.slf4j.Logger logger = LoggerFactory.getLogger("gds");
     @Override
     public List<SearchResponse> splitSearch(List<SearchParameters> searchParameters, ConcurrentHashMap<String, List<FlightItinerary>> concurrentHashMap, boolean isDomestic) throws Exception {
@@ -290,11 +296,17 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
         try{
             String currency = fareMasterPricerTravelBoardSearchReply.getConversionRate().getConversionRateDetail().get(0).getCurrency();
             List<FareMasterPricerTravelBoardSearchReply.FlightIndex> flightIndexList = fareMasterPricerTravelBoardSearchReply.getFlightIndex();
+            List<FareMasterPricerTravelBoardSearchReply.ServiceFeesGrp> baggageList = fareMasterPricerTravelBoardSearchReply.getServiceFeesGrp();
+            FareMasterPricerTravelBoardSearchReply.MnrGrp mnrGrp = fareMasterPricerTravelBoardSearchReply.getMnrGrp();
             for (FareMasterPricerTravelBoardSearchReply.Recommendation recommendation : fareMasterPricerTravelBoardSearchReply.getRecommendation()) {
                 for (ReferenceInfoType segmentRef : recommendation.getSegmentFlightRef()) {
                     FlightItinerary flightItinerary = new FlightItinerary();
                     flightItinerary.setPassportMandatory(false);
-                    flightItinerary.setPricingInformation(getPricingInformation(recommendation,searchParameters,isSeamen));
+                    String validatingCarrierCode = null;
+                    if (recommendation.getPaxFareProduct().get(0).getPaxFareDetail().getCodeShareDetails().get(0).getTransportStageQualifier().equals("V")) {
+                        validatingCarrierCode = recommendation.getPaxFareProduct().get(0).getPaxFareDetail().getCodeShareDetails().get(0).getCompany();
+                    }
+                    flightItinerary.setPricingInformation(getPricingInformation(recommendation,searchParameters,isSeamen,mnrGrp,segmentRef,baggageList,validatingCarrierCode));
                     flightItinerary.getPricingInformation().setGdsCurrency(currency);
                     flightItinerary.getPricingInformation().setPricingOfficeId(office.getOfficeId());
                     List<String> contextList = getAvailabilityCtx(segmentRef, recommendation.getSpecificRecDetails());
@@ -499,8 +511,95 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
         return airSegmentInformation;
     }
 
-    private PricingInformation getPricingInformation(FareMasterPricerTravelBoardSearchReply.Recommendation recommendation, SearchParameters searchParameters, boolean isSeamen) {
+    private BigDecimal getFeeAmount(MonetaryInformationType174241S monInfo) {
+
+        if (monInfo.getMonetaryDetails() != null && "BDT".equalsIgnoreCase(monInfo.getMonetaryDetails().getTypeQualifier())) {
+
+            return monInfo.getMonetaryDetails().getAmount();
+        } else if (monInfo.getOtherMonetaryDetails() != null) {
+
+            return monInfo.getOtherMonetaryDetails().stream().filter(details -> "BDT".equalsIgnoreCase(details.getTypeQualifier())).map(MonetaryInformationDetailsType245528C::getAmount).findFirst().orElse(null);
+        }
+
+        return null;
+    }
+    private boolean isAllowed(List<StatusDetailsType256255C> statusInformation, String indicator, String action) {
+        return statusInformation.stream().anyMatch(status -> indicator.equalsIgnoreCase(status.getIndicator()) && action.equalsIgnoreCase(status.getAction()));
+    }
+    private MnrSearchFareRules createSearchFareRules(ReferenceInfoType segmentRef, FareMasterPricerTravelBoardSearchReply.MnrGrp mnrGrp) {
+        MnrSearchFareRules mnrSearchFareRules = new MnrSearchFareRules();
+
+        try {
+            BigDecimal changeFeeBeforeDeparture = null;
+            BigDecimal cancellationFeeBeforeDeparture = null;
+            Boolean isChangeAllowedBeforeDeparture = false;
+            Boolean isCancellationAllowedBeforeDeparture = false;
+
+            // Getting the reference Number here for 'M'
+            String referenceNumber = segmentRef.getReferencingDetail().stream().filter(detail -> "M".equalsIgnoreCase(detail.getRefQualifier())).map(detail -> valueOf(detail.getRefNumber())).findFirst().orElse(null);
+
+
+            if (referenceNumber == null) {
+                return mnrSearchFareRules;
+            }
+
+            // Mapping Cancellation and Change here wrt to referenceNumber
+            for (FareMasterPricerTravelBoardSearchReply.MnrGrp.MnrDetails mnrDetail : mnrGrp.getMnrDetails()) {
+                if (!referenceNumber.equals(mnrDetail.getMnrRef().getItemNumberDetails().get(0).getNumber())) {
+                    continue;
+                }
+
+                for (FareMasterPricerTravelBoardSearchReply.MnrGrp.MnrDetails.CatGrp catGrp : mnrDetail.getCatGrp()) {
+                    BigInteger catRefNumber = catGrp.getCatInfo().getDescriptionInfo().getNumber();
+                    List<StatusDetailsType256255C> statusInformation = catGrp.getStatusInfo().getStatusInformation();
+
+                    // Change Fee (Category 31)
+                    if (catRefNumber.equals(BigInteger.valueOf(31))) {
+
+                        if (catGrp.getMonInfo() != null) {
+                            MonetaryInformationType174241S monInfo = catGrp.getMonInfo();
+                            changeFeeBeforeDeparture = (monInfo == null) ? null : getFeeAmount(monInfo);
+                        }
+
+                        isChangeAllowedBeforeDeparture = isAllowed(statusInformation, "BDJ", "1");
+                    }
+
+                    // Cancellation Fee (Category 33)
+                    if (catRefNumber.equals(BigInteger.valueOf(33))) {
+
+                        if (catGrp.getMonInfo() != null) {
+                            MonetaryInformationType174241S monInfo = catGrp.getMonInfo();
+                            cancellationFeeBeforeDeparture = (monInfo == null) ? null : getFeeAmount(monInfo);
+                        }
+
+                        isCancellationAllowedBeforeDeparture = isAllowed(statusInformation, "BDJ", "1");
+                    }
+
+                    if (changeFeeBeforeDeparture != null && cancellationFeeBeforeDeparture != null) {
+                        break;
+                    }
+                }
+                if (changeFeeBeforeDeparture != null && cancellationFeeBeforeDeparture != null) {
+                    break;
+                }
+            }
+
+            mnrSearchFareRules.setProvider(AMADEUS.toString());
+            mnrSearchFareRules.setChangeFee(changeFeeBeforeDeparture);
+            mnrSearchFareRules.setCancellationFee(cancellationFeeBeforeDeparture);
+            mnrSearchFareRules.setChangeBeforeDepartureAllowed(isChangeAllowedBeforeDeparture);
+            mnrSearchFareRules.setCancellationBeforeDepartureAllowed(isCancellationAllowedBeforeDeparture);
+
+            return mnrSearchFareRules;
+        } catch (Exception e) {
+            logger.error("Mini rule error " + e.getMessage());
+            return null;
+        }
+    }
+
+    private PricingInformation getPricingInformation(FareMasterPricerTravelBoardSearchReply.Recommendation recommendation, SearchParameters searchParameters, boolean isSeamen,FareMasterPricerTravelBoardSearchReply.MnrGrp mnrGrp,ReferenceInfoType segmentRef,List<FareMasterPricerTravelBoardSearchReply.ServiceFeesGrp> baggageList, String validatingCarrierCode) {
         PricingInformation pricingInformation = new PricingInformation();
+        searchOfficeID = configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey());
         pricingInformation.setProvider("Amadeus");
         List<MonetaryInformationDetailsType> monetaryDetails = recommendation.getRecPriceInfo().getMonetaryDetail();
         BigDecimal totalFare = monetaryDetails.get(0).getAmount();
@@ -551,7 +650,137 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
             passengerTaxes.add(passengerTax);
         }
         pricingInformation.setPassengerTaxes(passengerTaxes);
+        if (!searchOfficeID.equalsIgnoreCase("BOMAK38SN")) {
+            pricingInformation.setMnrSearchFareRules(createSearchFareRules(segmentRef, mnrGrp));
+        }
+
+        List<CabinDetails> cabinDetails = getCabinDetails(recommendation);
+
+        if(!cabinDetails.isEmpty()) {
+            pricingInformation.setCabinDetails(cabinDetails);
+        }
+
+        if (isSeamen) {
+            PreloadedSeamanFareRules preloadedSeamanFareRules = PreloadedSeamanFareRules.findSeamanFareRuleByAirlineCode(validatingCarrierCode);
+            if (preloadedSeamanFareRules != null) {
+                pricingInformation.setPreloadedSeamanFareRules(preloadedSeamanFareRules);
+            }
+        }
+
+        pricingInformation.setMnrSearchBaggage(createBaggageInformation(segmentRef, baggageList));
         return pricingInformation;
+    }
+
+    private List<CabinDetails> getCabinDetails(FareMasterPricerTravelBoardSearchReply.Recommendation recommendation) {
+
+        List<CabinDetails> cabinDetailsList = new LinkedList<>();
+
+        try {
+
+            List<FareMasterPricerTravelBoardSearchReply.Recommendation.PaxFareProduct> paxFareProductList = recommendation.getPaxFareProduct();
+
+            if (paxFareProductList != null) {
+                for (FareMasterPricerTravelBoardSearchReply.Recommendation.PaxFareProduct paxFareProduct : paxFareProductList) {
+                    List<FareMasterPricerTravelBoardSearchReply.Recommendation.PaxFareProduct.FareDetails> fareDetailsList = paxFareProduct.getFareDetails();
+
+                    if (fareDetailsList != null) {
+                        for (FareMasterPricerTravelBoardSearchReply.Recommendation.PaxFareProduct.FareDetails fareDetails : fareDetailsList) {
+                            FareMasterPricerTravelBoardSearchReply.Recommendation.PaxFareProduct.FareDetails.GroupOfFares groupOfFaresList = fareDetails.getGroupOfFares().get(0);
+
+                            if (groupOfFaresList != null) {
+
+                                CabinDetails cabinDetails = new CabinDetails();
+
+                                FlightProductInformationType176659S flightProductInformation = groupOfFaresList.getProductInformation();
+
+                                CabinProductDetailsType cabinProductDetails = flightProductInformation.getCabinProduct();
+
+                                String cabin = cabinMap.get(cabinProductDetails.getCabin());
+                                String bookingClass = cabinProductDetails.getRbd();
+                                String availableSeats = cabinProductDetails.getAvlStatus();
+
+                                cabinDetails.setCabin(cabin);
+                                cabinDetails.setRbd(bookingClass);
+                                cabinDetails.setAvailableSeats(availableSeats);
+
+                                cabinDetailsList.add(cabinDetails);
+
+                            }
+                        }
+                    }
+                }
+            }
+
+            return cabinDetailsList;
+
+        } catch (Exception e) {
+            logger.debug("Error with getting cabin details from search recommendation {} : ", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    private MnrSearchBaggage createBaggageInformation(ReferenceInfoType segmentRef, List<FareMasterPricerTravelBoardSearchReply.ServiceFeesGrp> baggageListInfo) {
+
+        try {
+            MnrSearchBaggage mnrSearchBaggage = new MnrSearchBaggage();
+            mnrSearchBaggage.setProvider(AMADEUS.toString());
+
+
+            // Baggage reference number
+            String baggageReferenceNumber = segmentRef.getReferencingDetail().stream().filter(referencingDetail -> "B".equalsIgnoreCase(referencingDetail.getRefQualifier())).map(referencingDetail -> valueOf(referencingDetail.getRefNumber())).findFirst().orElse(null);
+
+            if (baggageReferenceNumber == null) {
+                return mnrSearchBaggage;
+            }
+
+
+            // Finding the FBA reference from service group
+            String fbaRefValue = null;
+            outerForLoop:
+            for (FareMasterPricerTravelBoardSearchReply.ServiceFeesGrp serviceFeesGrp : baggageListInfo) {
+
+                if (!"FBA".equalsIgnoreCase(serviceFeesGrp.getServiceTypeInfo().getCarrierFeeDetails().getType())) {
+                    continue;
+                }
+
+                List<FareMasterPricerTravelBoardSearchReply.ServiceFeesGrp.ServiceCoverageInfoGrp> serviceCoverageInfoGrpList = serviceFeesGrp.getServiceCoverageInfoGrp();
+                for (FareMasterPricerTravelBoardSearchReply.ServiceFeesGrp.ServiceCoverageInfoGrp serviceCoverageInfoGrp : serviceCoverageInfoGrpList) {
+                    String serviceGroupRef = serviceCoverageInfoGrp.getItemNumberInfo().getItemNumber().getNumber();
+                    if (!serviceGroupRef.equalsIgnoreCase(baggageReferenceNumber)) {
+                        continue;
+                    }
+
+                    List<FareMasterPricerTravelBoardSearchReply.ServiceFeesGrp.ServiceCoverageInfoGrp.ServiceCovInfoGrp> serviceCovInfoGrpList = serviceCoverageInfoGrp.getServiceCovInfoGrp();
+                    for (FareMasterPricerTravelBoardSearchReply.ServiceFeesGrp.ServiceCoverageInfoGrp.ServiceCovInfoGrp serviceCovInfoGrp : serviceCovInfoGrpList) {
+
+                        List<ReferencingDetailsType195561C> referencingDetailList = serviceCovInfoGrp.getRefInfo().getReferencingDetail();
+                        for (ReferencingDetailsType195561C referencingDetails : referencingDetailList) {
+
+                            if ("F".equalsIgnoreCase(referencingDetails.getRefQualifier())) {
+                                fbaRefValue = String.valueOf(referencingDetails.getRefNumber());
+                                break outerForLoop;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Find the baggage allowance info
+            String finalFbaRefValue = fbaRefValue;
+            String baggageAllowed = baggageListInfo.stream().filter(serviceFeesGrp -> serviceFeesGrp.getServiceTypeInfo().getCarrierFeeDetails().getType().equalsIgnoreCase("FBA")).flatMap(serviceFeesGrp -> serviceFeesGrp.getFreeBagAllowanceGrp().stream()).filter(freeBagAllowance -> freeBagAllowance.getItemNumberInfo().getItemNumberDetails().get(0).getNumber().toString().equals(finalFbaRefValue)).map(freeBagAllowance -> {
+                BigInteger baggageValue = freeBagAllowance.getFreeBagAllownceInfo().getBaggageDetails().getFreeAllowance();
+                String baggageUnit = freeBagAllowance.getFreeBagAllownceInfo().getBaggageDetails().getQuantityCode();
+                return baggageValue + " " + MnrSearchBaggage.baggageCodes.get(baggageUnit);
+            }).findFirst().orElse(null);
+
+            mnrSearchBaggage.setAllowedBaggage(baggageAllowed);
+
+            return mnrSearchBaggage;
+        } catch (Exception e) {
+            logger.debug("Error with baggage information at Search level", e);
+            return null;
+        }
+
     }
 
     public String getFareBasis(FareMasterPricerTravelBoardSearchReply.Recommendation.PaxFareProduct.FareDetails fareDetails){

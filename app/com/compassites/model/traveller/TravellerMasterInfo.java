@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import utils.DateUtility;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -48,6 +49,24 @@ public class TravellerMasterInfo {
     private String accountName;
     private String expirationDate;
     private String provider;
+    private BigDecimal refundAmount;
+    private boolean isRefund;
+
+    public BigDecimal getRefundAmount() {
+        return refundAmount;
+    }
+
+    public void setRefundAmount(BigDecimal refundAmount) {
+        this.refundAmount = refundAmount;
+    }
+
+    public boolean isRefund() {
+        return isRefund;
+    }
+
+    public void setRefund(boolean refund) {
+        isRefund = refund;
+    }
 
     public String getProvider() {
         return provider;

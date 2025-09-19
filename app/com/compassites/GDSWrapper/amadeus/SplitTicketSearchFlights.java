@@ -291,7 +291,7 @@ public class SplitTicketSearchFlights {
         pit.getPriceType().add("RW");
 
         if (!officeId.equalsIgnoreCase("BOMAK38SN")) {
-           // pit.getPriceType().add("MNR");
+            pit.getPriceType().add("MNR");
         }
     }
 
