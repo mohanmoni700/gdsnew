@@ -380,7 +380,8 @@ public class ServiceHandler {
     public PNRReply retrievePNR(String num, AmadeusSessionWrapper amadeusSessionWrapper) {
 
         amadeusSessionWrapper.incrementSequenceNumber(amadeusSessionWrapper, bindingProvider);
-        logger.debug("Amadeus retrievePNR called at {}....................Session Id: {}", new Date(), amadeusSessionWrapper.getSessionId());
+        logger.debug("Amadeus retrievePNR called at {}....................Session Id: {}", new Date()+ amadeusSessionWrapper.getSessionId());
+        System.out.println("Amadeus retrievePNR called at {}....................Session Id: {}"+ new Date()+ amadeusSessionWrapper.getSessionId());
 
         PNRRetrieve pnrRetrieve = new PNRRetriev().retrieve(num);
         amadeusLogger.debug("PNRRetrieve request {} SessionId: {} ---->\n{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(pnrRetrieve));

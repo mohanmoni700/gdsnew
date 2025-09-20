@@ -6,6 +6,7 @@ public class FareType {
     private String fareFamily;
     private String ftc;
     private String fareBasis;
+    private String ptc;
 
     public String getFtc() {
         return ftc;
@@ -38,5 +39,14 @@ public class FareType {
     public void setFareBasis(String fareBasis) {
         this.fareBasis = fareBasis;
     }
+
+    public String getPtc() {
+        return ptc;
+    }
+
+    public void setPtc(String ptc) {
+        this.ptc = ptc;
+    }
+
 
 }

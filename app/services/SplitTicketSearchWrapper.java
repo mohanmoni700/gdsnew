@@ -160,16 +160,6 @@ public class SplitTicketSearchWrapper {
             isSourceDomestic = true;
             searchParametersList = findNearestAirport(searchParameters,isDomestic, airport,isSourceDomestic);
             isSourceAirportDomestic = true;
-            /*isSourceDomestic = false;
-            Airport destinationAirport = Airport.getAirportByIataCode(searchParameters.getJourneyList().get(0).getOrigin());
-            searchParametersList = findNearestAirport(searchParameters,false, destinationAirport,isSourceDomestic);
-            ConcurrentHashMap<String,List<FlightItinerary>> concurrentHashMap = new ConcurrentHashMap<>();
-            List<SearchResponse> responses = this.splitSearch(searchParametersList,concurrentHashMap,true);
-            logger.debug("responses "+Json.toJson(responses));
-            Map<String, PossibleRoutes> possibleRoutesMap = this.findNextSegmentDepartureDate(responses);
-            SplitTicketHelper splitTicketHelper = new SplitTicketHelper();
-            List<SearchParameters> searchParameters1 = splitTicketHelper.createSearchParameters(possibleRoutesMap,searchParameters, null);
-            searchParametersList.addAll(searchParameters1);*/
         } else {
             System.out.println("Domestic true");
             logger.info("Domestic true");

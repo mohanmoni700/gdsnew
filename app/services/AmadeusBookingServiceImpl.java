@@ -2266,6 +2266,8 @@ public class AmadeusBookingServiceImpl implements BookingService {
             }
             List<TicketDisplayTSTReply.FareList> fareList = ticketDisplayTSTReply.getFareList();
             validatingCarrierInSegment(fareList, flightItinerary, isSeamen, gdsPNRReply);
+
+
             pricingInfo = getPricingInfoFromTST(gdsPNRReply, ticketDisplayTSTReply, isSeamen, journeyList);
             if (isSeamen) {
                 flightItinerary.setSeamanPricingInformation(pricingInfo);
@@ -2274,6 +2276,8 @@ public class AmadeusBookingServiceImpl implements BookingService {
             }
             masterInfo.setSeamen(isSeamen);
             masterInfo.setItinerary(flightItinerary);
+
+
             String validatingCarrierCode = null;
 
             for (Journey journey : journeyList) {
@@ -2335,6 +2339,9 @@ public class AmadeusBookingServiceImpl implements BookingService {
                 pricePNRReply = checkPNRPricing(masterInfo, gdsPNRReply, pricePNRReply, pnrResponse, amadeusSessionWrapper);
 
                 journeyList = masterInfo.isSeamen() ? flightItinerary.getJourneyList() : flightItinerary.getNonSeamenJourneyList();
+                for (Journey journey : journeyList) {
+                    journey.setProvider("Amadeus");
+                }
 
                 Map<String, String> fareComponentMap = AmadeusBookingHelper.getFareComponentMapFromPricePNRWithBookingClass(pricePNRReply,journeyList);
                 Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap = amadeusBookingHelper.getFareRuleTxtMapFromPricingAndFc(amadeusSessionWrapper, fareComponentMap);

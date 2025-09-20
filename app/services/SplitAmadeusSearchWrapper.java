@@ -156,12 +156,12 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
             redisTemplate.expire(redisKey, CacheConstants.CACHE_TIMEOUT_IN_SECS, TimeUnit.SECONDS);
             ThreadPoolExecutor newExecutor = new ThreadPoolExecutor(4, 10, Long.MAX_VALUE, TimeUnit.NANOSECONDS, new ArrayBlockingQueue<Runnable>(queueSize, true));
 
-                futureSearchResponseList.add(newExecutor.submit(new Callable<List<SearchResponse>>() {
-                    @Override
-                    public List<SearchResponse> call() throws Exception {
-                        return splitTicketSearch.splitSearch(searchParameters,concurrentHashMap,false);
-                    }
-                }));
+            futureSearchResponseList.add(newExecutor.submit(new Callable<List<SearchResponse>>() {
+                @Override
+                public List<SearchResponse> call() throws Exception {
+                    return splitTicketSearch.splitSearch(searchParameters,concurrentHashMap,false);
+                }
+            }));
             futureSearchResponseList.add(newExecutor.submit(new Callable<List<SearchResponse>>() {
                 @Override
                 public List<SearchResponse> call() throws Exception {
@@ -474,7 +474,9 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
 
         try {
             long startTime = System.currentTimeMillis();
+            System.out.println("Start "+new Date());
             amadeusSessionWrapper = amadeusSessionManager.getSession(office);
+            System.out.println("End "+new Date());
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
 
@@ -549,7 +551,9 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
 
         try {
             long startTime = System.currentTimeMillis();
+            System.out.println("Start "+new Date());
             amadeusSessionWrapper = amadeusSessionManager.getSession(office);
+            System.out.println("End "+new Date());
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
 
@@ -893,6 +897,13 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
                     pricingInformation.setChdBasePrice(baseFare);
                     pricingInformation.setChdTotalPrice(amount);
                     passengerTax.setPassengerType("CHD");
+                    passengerTax.setTotalTax(tax);
+                    passengerTax.setPassengerCount(paxCount);
+                }
+                if (searchParameters.getInfantCount()>0 && isSeamen) {
+                    pricingInformation.setInfBasePrice(baseFare);
+                    pricingInformation.setInfTotalPrice(amount);
+                    passengerTax.setPassengerType("INF");
                     passengerTax.setTotalTax(tax);
                     passengerTax.setPassengerCount(paxCount);
                 }

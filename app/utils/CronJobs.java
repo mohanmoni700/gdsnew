@@ -41,6 +41,7 @@ public class CronJobs {
     @Scheduled(fixedRate = 600000)
     public void amadeusSessionProcess() {
         logger.debug("amadeusSessionProcess  cron job called ..................");
+        System.out.println("amadeusSessionProcess  cron job called ..................");
 
         List<AmadeusSessionWrapper> amadeusSessionWrapperList = AmadeusSessionWrapper.findAllContextList();
 

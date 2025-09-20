@@ -2339,6 +2339,8 @@ public class AmadeusBookingHelper {
                                             fareType.setFtc(text);
                                         } else if (informationType.equalsIgnoreCase("FFD") && text != null && !text.isEmpty()) {
                                             fareType.setFfd(text);
+                                        } else if (informationType.equalsIgnoreCase("PTC") && text != null && !text.isEmpty()) {
+                                            fareType.setPtc(text);
                                         }
                                     }
                                 }

@@ -78,16 +78,51 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
     public List<SearchResponse> splitSearch(List<SearchParameters> searchParameters, ConcurrentHashMap<String, List<FlightItinerary>> concurrentHashMap, boolean isDomestic) throws Exception {
         List<SearchResponse> responses = new ArrayList<>();
         searchOfficeID = configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey());
-        for (SearchParameters searchParameters1: searchParameters)  {
+        
+        logger.info("Split ticket - Starting search for {} parameters", searchParameters.size());
+        System.out.println("Split ticket - Starting search for " + searchParameters.size() + " parameters");
+        
+        for (int i = 0; i < searchParameters.size(); i++) {
+            SearchParameters searchParameters1 = searchParameters.get(i);
+            String from = searchParameters1.getJourneyList().get(0).getOrigin();
+            String to = searchParameters1.getJourneyList().get(searchParameters1.getJourneyList().size()-1).getDestination();
+            String route = from + " to " + to;
+            
+            long searchStartTime = System.currentTimeMillis();
+            logger.info("Split ticket - Search {} started at: {} - Route: {}", i + 1, new Date(searchStartTime), route);
+            System.out.println("Split ticket - Search " + (i + 1) + " started at: " + new Date(searchStartTime) + " - Route: " + route);
+            
             FlightSearchOffice searchOffice = new FlightSearchOffice();
             searchOffice.setOfficeId(searchOfficeID);
             searchOffice.setName("");
             SearchResponse searchResponse = null;
-            if (isDomestic) {
-                searchResponse = this.findNextSegmentDeparture(searchParameters1, searchOffice);
-            } else {
-                searchResponse = this.search(searchParameters1, searchOffice);
+            
+            try {
+                if (isDomestic) {
+                    searchResponse = this.findNextSegmentDeparture(searchParameters1, searchOffice);
+                } else {
+                    searchResponse = this.search(searchParameters1, searchOffice);
+                }
+                
+                long searchEndTime = System.currentTimeMillis();
+                long searchDuration = searchEndTime - searchStartTime;
+                
+                logger.info("Split ticket - Search {} completed at: {} (Duration: {} seconds) - Route: {}", 
+                           i + 1, new Date(searchEndTime), searchDuration/1000, route);
+                System.out.println("Split ticket - Search " + (i + 1) + " completed at: " + new Date(searchEndTime) + 
+                                 " (Duration: " + searchDuration/1000 + " seconds) - Route: " + route);
+                
+            } catch (Exception e) {
+                long searchEndTime = System.currentTimeMillis();
+                long searchDuration = searchEndTime - searchStartTime;
+                
+                logger.error("Split ticket - Search {} failed at: {} (Duration: {} seconds) - Route: {} - Error: {}", 
+                           i + 1, new Date(searchEndTime), searchDuration/1000, route, e.getMessage());
+                System.out.println("Split ticket - Search " + (i + 1) + " failed at: " + new Date(searchEndTime) + 
+                                 " (Duration: " + searchDuration/1000 + " seconds) - Route: " + route + " - Error: " + e.getMessage());
+                throw e;
             }
+            
             if (concurrentHashMap.containsKey(searchParameters1.getJourneyList().get(0).getOrigin())) {
                 concurrentHashMap.get(searchParameters1.getJourneyList().get(0).getOrigin()).addAll(new ArrayList<FlightItinerary>(searchResponse.getAirSolution().getSeamenHashMap().values()));
                 concurrentHashMap.get(searchParameters1.getJourneyList().get(0).getOrigin()).addAll(new ArrayList<FlightItinerary>(searchResponse.getAirSolution().getNonSeamenHashMap().values()));
@@ -111,21 +146,29 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
     }
 
     public SearchResponse findNextSegmentDeparture(SearchParameters searchParameters, FlightSearchOffice office) throws Exception {
+        String from = searchParameters.getJourneyList().get(0).getOrigin();
+        String to = searchParameters.getJourneyList().get(searchParameters.getJourneyList().size()-1).getDestination();
+        String route = from + " to " + to;
+        
+        long apiStartTime = System.currentTimeMillis();
         logger.debug("##################### findNextSegmentDeparture AmadeusFlightSearch started  : ");
+        logger.info("Split ticket - Amadeus API call started at: {} - Route: {}", new Date(apiStartTime), route);
+        System.out.println("Split ticket - Amadeus API call started at: " + new Date(apiStartTime) + " - Route: " + route);
         logger.debug("#####################SearchParameters: \n"+ Json.toJson(searchParameters));
+        
         SearchResponse searchResponse = new SearchResponse();
         AmadeusSessionWrapper amadeusSessionWrapper = null;
         searchResponse.setProvider("Amadeus");
         searchResponse.setFlightSearchOffice(office);
-        String from = searchParameters.getJourneyList().get(0).getOrigin();
-        String  to = searchParameters.getJourneyList().get(searchParameters.getJourneyList().size()-1).getDestination();
         searchResponse.setAirSegmentKey(from+to);
         FareMasterPricerTravelBoardSearchReply fareMasterPricerTravelBoardSearchReply = null;
         FareMasterPricerTravelBoardSearchReply seamenReply = null;
 
         try {
             long startTime = System.currentTimeMillis();
+            System.out.println("Start "+new Date());
             amadeusSessionWrapper = amadeusSessionManager.getSession(office);
+            System.out.println("End "+new Date());
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
 
@@ -196,6 +239,14 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
         searchResponse.setAirSolution(airSolution);
         searchResponse.setProvider(provider());
         searchResponse.setFlightSearchOffice(office);
+        
+        long apiEndTime = System.currentTimeMillis();
+        long apiDuration = apiEndTime - apiStartTime;
+        logger.info("Split ticket - Amadeus API call completed at: {} (Duration: {} seconds) - Route: {}", 
+                   new Date(apiEndTime), apiDuration/1000, route);
+        System.out.println("Split ticket - Amadeus API call completed at: " + new Date(apiEndTime) + 
+                         " (Duration: " + apiDuration/1000 + " seconds) - Route: " + route);
+        
         return searchResponse;
     }
 
@@ -204,21 +255,29 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
     }
     @RetryOnFailure(attempts = 2, delay = 2000, exception = RetryException.class)
     public SearchResponse search(SearchParameters searchParameters, FlightSearchOffice office) throws Exception {
+        String from = searchParameters.getJourneyList().get(0).getOrigin();
+        String to = searchParameters.getJourneyList().get(searchParameters.getJourneyList().size()-1).getDestination();
+        String route = from + " to " + to;
+        
+        long apiStartTime = System.currentTimeMillis();
         logger.debug("##################### search 186 AmadeusFlightSearch started for split  : ");
+        logger.info("Split ticket - Amadeus API call started at: {} - Route: {}", new Date(apiStartTime), route);
+        System.out.println("Split ticket - Amadeus API call started at: " + new Date(apiStartTime) + " - Route: " + route);
         logger.debug("##################### Original SearchParameters: \n"+ Json.toJson(searchParameters));
+        
         SearchResponse searchResponse = new SearchResponse();
         AmadeusSessionWrapper amadeusSessionWrapper = null;
         searchResponse.setProvider("Amadeus");
         searchResponse.setFlightSearchOffice(office);
-        String from = searchParameters.getJourneyList().get(0).getOrigin();
-        String  to = searchParameters.getJourneyList().get(searchParameters.getJourneyList().size()-1).getDestination();
         searchResponse.setAirSegmentKey(from+to);
         FareMasterPricerTravelBoardSearchReply fareMasterPricerTravelBoardSearchReply = null;
         FareMasterPricerTravelBoardSearchReply seamenReply = null;
 
         try {
             long startTime = System.currentTimeMillis();
+            System.out.println("Start "+new Date());
             amadeusSessionWrapper = amadeusSessionManager.getSession(office);
+            System.out.println("End "+new Date());
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
 
@@ -288,6 +347,14 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
         searchResponse.setAirSolution(airSolution);
         searchResponse.setProvider(provider());
         searchResponse.setFlightSearchOffice(office);
+        
+        long apiEndTime = System.currentTimeMillis();
+        long apiDuration = apiEndTime - apiStartTime;
+        logger.info("Split ticket - Amadeus API call completed at: {} (Duration: {} seconds) - Route: {}", 
+                   new Date(apiEndTime), apiDuration/1000, route);
+        System.out.println("Split ticket - Amadeus API call completed at: " + new Date(apiEndTime) + 
+                         " (Duration: " + apiDuration/1000 + " seconds) - Route: " + route);
+        
         return searchResponse;
     }
 
@@ -629,6 +696,13 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
                     pricingInformation.setChdBasePrice(baseFare);
                     pricingInformation.setChdTotalPrice(amount);
                     passengerTax.setPassengerType("CHD");
+                    passengerTax.setTotalTax(tax);
+                    passengerTax.setPassengerCount(paxCount);
+                }
+                if (searchParameters.getInfantCount()>0 && isSeamen) {
+                    pricingInformation.setInfBasePrice(baseFare);
+                    pricingInformation.setInfTotalPrice(amount);
+                    passengerTax.setPassengerType("INF");
                     passengerTax.setTotalTax(tax);
                     passengerTax.setPassengerCount(paxCount);
                 }
