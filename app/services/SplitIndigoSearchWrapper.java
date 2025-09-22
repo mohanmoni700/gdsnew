@@ -39,4 +39,9 @@ public class SplitIndigoSearchWrapper implements SplitAmadeusSearch {
     public List<FlightSearchOffice> getOfficeList() {
         return null;
     }
+
+    @Override
+    public List<SearchResponse> splitTransitPointSearch(List<SearchParameters> searchParameters, ConcurrentHashMap<String, List<FlightItinerary>> concurrentHashMap, boolean isDomestic) throws Exception {
+        return null;
+    }
 }

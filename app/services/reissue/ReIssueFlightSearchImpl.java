@@ -236,7 +236,7 @@ public class ReIssueFlightSearchImpl implements ReIssueFlightSearch {
             return searchResponse;
         } finally {
             if (amadeusSessionWrapper != null) {
-                amadeusSessionManager.updateAmadeusSession(amadeusSessionWrapper);
+                amadeusSessionManager.safeUpdateAmadeusSession(amadeusSessionWrapper);
             }
         }
 

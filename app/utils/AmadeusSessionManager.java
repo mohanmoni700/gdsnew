@@ -98,6 +98,49 @@ public class AmadeusSessionManager {
         }
     }
 
+    public void safeUpdateAmadeusSession(AmadeusSessionWrapper amadeusSessionWrapper) {
+        if (amadeusSessionWrapper != null) {
+            try {
+                amadeusSessionWrapper.setQueryInProgress(false);
+                amadeusSessionWrapper.update();
+            } catch (ClassCastException e) {
+                logger.warn("ClassCastException occurred during session update, attempting workaround: {}", e.getMessage());
+                System.out.println("ClassCastException occurred during session update, attempting workaround: " + e.getMessage());
+                
+                try {
+                    // Workaround: Create a new instance and copy all data
+                    AmadeusSessionWrapper newSession = new AmadeusSessionWrapper();
+                    newSession.setSessionId(amadeusSessionWrapper.getSessionId());
+                    newSession.setSecurityToken(amadeusSessionWrapper.getSecurityToken());
+                    newSession.setSequenceNumber(amadeusSessionWrapper.getSequenceNumber());
+                    newSession.setLastQueryDate(amadeusSessionWrapper.getLastQueryDate());
+                    newSession.setQueryInProgress(false);
+                    newSession.setActiveContext(amadeusSessionWrapper.isActiveContext());
+                    newSession.setSessionUUID(amadeusSessionWrapper.getSessionUUID());
+                    newSession.setGdsPNR(amadeusSessionWrapper.getGdsPNR());
+                    newSession.setOfficeId(amadeusSessionWrapper.getOfficeId());
+                    newSession.setPartnerName(amadeusSessionWrapper.getOfficeName());
+                    newSession.setPartner(amadeusSessionWrapper.isPartner());
+                    newSession.setmSession(amadeusSessionWrapper.getmSession());
+                    newSession.setStateful(amadeusSessionWrapper.isStateful());
+                    newSession.setSessionReUsed(amadeusSessionWrapper.isSessionReUsed());
+                    newSession.save();
+                    
+                    logger.info("Successfully created new session instance as workaround for ClassCastException");
+                    System.out.println("Successfully created new session instance as workaround for ClassCastException");
+                } catch (Exception ex) {
+                    logger.error("Failed to create new session instance as workaround: {}", ex.getMessage());
+                    System.out.println("Failed to create new session instance as workaround: " + ex.getMessage());
+                    ex.printStackTrace();
+                }
+            } catch (Exception e) {
+                logger.error("Unexpected error during session update: {}", e.getMessage());
+                System.out.println("Unexpected error during session update: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+    }
+
     public String storeActiveSession(AmadeusSessionWrapper amadeusSessionWrapper, String pnr) {
 
         String uuid = UUID.randomUUID().toString();
@@ -204,6 +247,211 @@ public class AmadeusSessionManager {
         } else {
             logger.debug("No existing session found, creating new session");
             return createSession(office);
+        }
+    }
+
+    // ==================== SPLIT TICKET SPECIFIC SESSION METHODS ====================
+    
+    /**
+     * Get session specifically for split ticket operations
+     * Optimized for split ticket performance with dedicated session management
+     */
+    public synchronized AmadeusSessionWrapper getSplitTicketSessionFast(FlightSearchOffice office) throws InterruptedException {
+        logger.debug("Split ticket - getSplitTicketSessionFast called for office: {}", office.getOfficeId());
+        System.out.println("Split ticket - getSplitTicketSessionFast called for office: " + office.getOfficeId());
+        
+        try {
+            // Get inactive sessions for this office
+            List<AmadeusSessionWrapper> sessionList = AmadeusSessionWrapper.findAllInactiveContextListByOfficeId(office.getOfficeId());
+            logger.debug("Split ticket - Found {} inactive sessions", sessionList.size());
+            
+            // Try to find an available session
+            for (AmadeusSessionWrapper session : sessionList) {
+                if (!session.isQueryInProgress()) {
+                    // Check if session is not expired
+                    Period p = new Period(new DateTime(session.getLastQueryDate()), new DateTime(), PeriodType.minutes());
+                    int inactivityTimeInMinutes = p.getMinutes();
+                    
+                    if (inactivityTimeInMinutes < AmadeusConstants.INACTIVITY_TIMEOUT) {
+                        // Mark session as in progress
+                        session.setQueryInProgress(true);
+                        session.setLastQueryDate(new Date());
+                        session.save();
+                        
+                        logger.debug("Split ticket - Returning existing session: {}", 
+                                   session.getmSession() != null ? session.getmSession().value.getSessionId() : "null");
+                        System.out.println("Split ticket - Returning existing session: " + 
+                                         (session.getmSession() != null ? session.getmSession().value.getSessionId() : "null"));
+                        return session;
+                    } else {
+                        // Session expired, delete it
+                        try {
+                            session.delete();
+                        } catch (Exception e) {
+                            logger.warn("Split ticket - Failed to delete expired session: {}", e.getMessage());
+                        }
+                    }
+                }
+            }
+            
+            // No available session found, create new one
+            logger.debug("Split ticket - No available session found, creating new session");
+            System.out.println("Split ticket - No available session found, creating new session");
+            return createSplitTicketSessionFast(office);
+            
+        } catch (Exception e) {
+            logger.error("Split ticket - Error in getSplitTicketSessionFast: {}", e.getMessage());
+            System.out.println("Split ticket - Error in getSplitTicketSessionFast: " + e.getMessage());
+            e.printStackTrace();
+            return createSplitTicketSessionFast(office);
+        }
+    }
+    
+    /**
+     * Create new session specifically for split ticket operations
+     */
+    private AmadeusSessionWrapper createSplitTicketSessionFast(FlightSearchOffice office) {
+        logger.debug("Split ticket - createSplitTicketSessionFast called for office: {}", office.getOfficeId());
+        System.out.println("Split ticket - createSplitTicketSessionFast called for office: " + office.getOfficeId());
+        
+        try {
+            AmadeusSessionWrapper newSession = new AmadeusSessionWrapper();
+            newSession.setOfficeId(office.getOfficeId());
+            newSession.setPartner(office.isPartner());
+            newSession.setQueryInProgress(true);
+            newSession.setActiveContext(false);
+            newSession.setLastQueryDate(new Date());
+            newSession.setStateful(false);
+            newSession.setSessionReUsed(false);
+            
+            // Create new Amadeus session
+            AmadeusSessionWrapper sessionReply = createSession(office);
+            if (sessionReply != null && sessionReply.getSessionId() != null) {
+                newSession.setSessionId(sessionReply.getSessionId());
+                newSession.setSecurityToken(sessionReply.getSecurityToken());
+                newSession.setSequenceNumber(sessionReply.getSequenceNumber());
+                newSession.setmSession(sessionReply.getmSession());
+                
+                newSession.save();
+                
+                logger.info("Split ticket - Created new session: {}", sessionReply.getSessionId());
+                System.out.println("Split ticket - Created new session: " + sessionReply.getSessionId());
+                return newSession;
+            } else {
+                logger.error("Split ticket - Failed to create Amadeus session");
+                System.out.println("Split ticket - Failed to create Amadeus session");
+                return null;
+            }
+        } catch (Exception e) {
+            logger.error("Split ticket - Error creating new session: {}", e.getMessage());
+            System.out.println("Split ticket - Error creating new session: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    /**
+     * Release session specifically for split ticket operations
+     * Uses safe update to handle ClassCastException
+     */
+    public void releaseSplitTicketSessionFast(AmadeusSessionWrapper amadeusSessionWrapper) {
+        if (amadeusSessionWrapper != null) {
+            logger.debug("Split ticket - releaseSplitTicketSessionFast called");
+            System.out.println("Split ticket - releaseSplitTicketSessionFast called");
+            
+            try {
+                // Try normal update first
+                amadeusSessionWrapper.setQueryInProgress(false);
+                amadeusSessionWrapper.update();
+                logger.debug("Split ticket - Session released successfully");
+                System.out.println("Split ticket - Session released successfully");
+            } catch (ClassCastException e) {
+                logger.warn("Split ticket - ClassCastException during session release, using workaround: {}", e.getMessage());
+                System.out.println("Split ticket - ClassCastException during session release, using workaround: " + e.getMessage());
+                
+                // Use workaround for ClassCastException
+                try {
+                    AmadeusSessionWrapper newSession = new AmadeusSessionWrapper();
+                    newSession.setSessionId(amadeusSessionWrapper.getSessionId());
+                    newSession.setSecurityToken(amadeusSessionWrapper.getSecurityToken());
+                    newSession.setSequenceNumber(amadeusSessionWrapper.getSequenceNumber());
+                    newSession.setLastQueryDate(new Date());
+                    newSession.setQueryInProgress(false);
+                    newSession.setActiveContext(amadeusSessionWrapper.isActiveContext());
+                    newSession.setSessionUUID(amadeusSessionWrapper.getSessionUUID());
+                    newSession.setGdsPNR(amadeusSessionWrapper.getGdsPNR());
+                    newSession.setOfficeId(amadeusSessionWrapper.getOfficeId());
+                    newSession.setPartnerName(amadeusSessionWrapper.getOfficeName());
+                    newSession.setPartner(amadeusSessionWrapper.isPartner());
+                    newSession.setmSession(amadeusSessionWrapper.getmSession());
+                    newSession.setStateful(amadeusSessionWrapper.isStateful());
+                    newSession.setSessionReUsed(amadeusSessionWrapper.isSessionReUsed());
+                    newSession.save();
+                    
+                    logger.info("Split ticket - Session released using workaround");
+                    System.out.println("Split ticket - Session released using workaround");
+                } catch (Exception ex) {
+                    logger.error("Split ticket - Failed to release session with workaround: {}", ex.getMessage());
+                    System.out.println("Split ticket - Failed to release session with workaround: " + ex.getMessage());
+                    ex.printStackTrace();
+                }
+            } catch (Exception e) {
+                logger.error("Split ticket - Unexpected error during session release: {}", e.getMessage());
+                System.out.println("Split ticket - Unexpected error during session release: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    /**
+     * Update session specifically for split ticket operations
+     * Uses safe update to handle ClassCastException
+     */
+    public void updateSplitTicketSessionFast(AmadeusSessionWrapper amadeusSessionWrapper) {
+        if (amadeusSessionWrapper != null) {
+            logger.debug("Split ticket - updateSplitTicketSessionFast called");
+            System.out.println("Split ticket - updateSplitTicketSessionFast called");
+            
+            try {
+                amadeusSessionWrapper.setQueryInProgress(false);
+                amadeusSessionWrapper.update();
+                logger.debug("Split ticket - Session updated successfully");
+                System.out.println("Split ticket - Session updated successfully");
+            } catch (ClassCastException e) {
+                logger.warn("Split ticket - ClassCastException during session update, using workaround: {}", e.getMessage());
+                System.out.println("Split ticket - ClassCastException during session update, using workaround: " + e.getMessage());
+                
+                // Use workaround for ClassCastException
+                try {
+                    AmadeusSessionWrapper newSession = new AmadeusSessionWrapper();
+                    newSession.setSessionId(amadeusSessionWrapper.getSessionId());
+                    newSession.setSecurityToken(amadeusSessionWrapper.getSecurityToken());
+                    newSession.setSequenceNumber(amadeusSessionWrapper.getSequenceNumber());
+                    newSession.setLastQueryDate(new Date());
+                    newSession.setQueryInProgress(false);
+                    newSession.setActiveContext(amadeusSessionWrapper.isActiveContext());
+                    newSession.setSessionUUID(amadeusSessionWrapper.getSessionUUID());
+                    newSession.setGdsPNR(amadeusSessionWrapper.getGdsPNR());
+                    newSession.setOfficeId(amadeusSessionWrapper.getOfficeId());
+                    newSession.setPartnerName(amadeusSessionWrapper.getOfficeName());
+                    newSession.setPartner(amadeusSessionWrapper.isPartner());
+                    newSession.setmSession(amadeusSessionWrapper.getmSession());
+                    newSession.setStateful(amadeusSessionWrapper.isStateful());
+                    newSession.setSessionReUsed(amadeusSessionWrapper.isSessionReUsed());
+                    newSession.save();
+                    
+                    logger.info("Split ticket - Session updated using workaround");
+                    System.out.println("Split ticket - Session updated using workaround");
+                } catch (Exception ex) {
+                    logger.error("Split ticket - Failed to update session with workaround: {}", ex.getMessage());
+                    System.out.println("Split ticket - Failed to update session with workaround: " + ex.getMessage());
+                    ex.printStackTrace();
+                }
+            } catch (Exception e) {
+                logger.error("Split ticket - Unexpected error during session update: {}", e.getMessage());
+                System.out.println("Split ticket - Unexpected error during session update: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
     }
 

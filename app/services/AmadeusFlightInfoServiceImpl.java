@@ -122,7 +122,7 @@ public class AmadeusFlightInfoServiceImpl implements FlightInfoService {
         } finally {
             if (amadeusSessionWrapper != null) {
                 amadeusSessionWrapper.setQueryInProgress(false);
-                amadeusSessionManager.updateAmadeusSession(amadeusSessionWrapper);
+                amadeusSessionManager.safeUpdateAmadeusSession(amadeusSessionWrapper);
             }
         }
         return flightItinerary;
@@ -175,7 +175,7 @@ public class AmadeusFlightInfoServiceImpl implements FlightInfoService {
         } finally {
             if (amadeusSessionWrapper != null) {
                 amadeusSessionWrapper.setQueryInProgress(false);
-                amadeusSessionManager.updateAmadeusSession(amadeusSessionWrapper);
+                amadeusSessionManager.safeUpdateAmadeusSession(amadeusSessionWrapper);
             }
         }
         return flightItinerary;
@@ -453,7 +453,7 @@ public class AmadeusFlightInfoServiceImpl implements FlightInfoService {
         } finally {
             if (amadeusSessionWrapper != null) {
                 amadeusSessionWrapper.setQueryInProgress(false);
-                amadeusSessionManager.updateAmadeusSession(amadeusSessionWrapper);
+                amadeusSessionManager.safeUpdateAmadeusSession(amadeusSessionWrapper);
             }
         }
         return flightItinerary;
@@ -504,7 +504,7 @@ public class AmadeusFlightInfoServiceImpl implements FlightInfoService {
         } finally {
             if (amadeusSessionWrapper != null) {
                 amadeusSessionWrapper.setQueryInProgress(false);
-                amadeusSessionManager.updateAmadeusSession(amadeusSessionWrapper);
+                amadeusSessionManager.safeUpdateAmadeusSession(amadeusSessionWrapper);
             }
         }
         return fareRules;

@@ -33,6 +33,14 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
+
+import static com.compassites.model.PROVIDERS.AMADEUS;
+import static java.lang.String.valueOf;
 
 import static com.compassites.model.PROVIDERS.AMADEUS;
 import static java.lang.String.valueOf;
@@ -74,74 +82,256 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
         cabinMap.put("M","ECONOMIC STANDARD");
     }
     static org.slf4j.Logger logger = LoggerFactory.getLogger("gds");
+    
+    // Session synchronization to prevent OptimisticLockException
+    private static final Object sessionLock = new Object();
+    
+    // Removed semaphore bottleneck - let threads run truly in parallel
+    // The session manager will handle session conflicts internally
+    
+    /**
+     * Thread-safe session update with retry logic to handle OptimisticLockException
+     */
+    private void updateSessionSafely(AmadeusSessionWrapper amadeusSessionWrapper) {
+        if (amadeusSessionWrapper == null) {
+            return;
+        }
+        
+        synchronized (sessionLock) {
+            int maxRetries = 3;
+            int retryCount = 0;
+            
+            while (retryCount < maxRetries) {
+                try {
+                    amadeusSessionManager.updateSplitTicketSessionFast(amadeusSessionWrapper);
+                    logger.debug("Split ticket - Session updated successfully on attempt {}", retryCount + 1);
+                    System.out.println("Split ticket - Session updated successfully on attempt " + (retryCount + 1));
+                    return;
+                } catch (Exception e) {
+                    retryCount++;
+                    
+                    // Check if it's an OptimisticLockException
+                    boolean isOptimisticLockException = e.getMessage() != null && 
+                        (e.getMessage().contains("OptimisticLockException") || 
+                         e.getClass().getSimpleName().equals("OptimisticLockException"));
+                    
+                    if (isOptimisticLockException) {
+                        logger.warn("Split ticket - OptimisticLockException on attempt {}, retrying... ({} of {})", 
+                                   retryCount, retryCount, maxRetries);
+                        System.out.println("Split ticket - OptimisticLockException on attempt " + retryCount + 
+                                         ", retrying... (" + retryCount + " of " + maxRetries + ")");
+                        
+                        if (retryCount < maxRetries) {
+                            try {
+                                Thread.sleep(200 * retryCount); // Progressive delay: 200ms, 400ms, 600ms
+                                logger.debug("Split ticket - Retry delay completed, refreshing session and attempting again...");
+                                System.out.println("Split ticket - Retry delay completed, refreshing session and attempting again...");
+                                
+                                // Try to refresh the session before retrying
+                                try {
+                                    // Get a fresh copy of the session from database
+                                    AmadeusSessionWrapper refreshedSession = AmadeusSessionWrapper.findBySessionId(amadeusSessionWrapper.getSessionId());
+                                    if (refreshedSession != null) {
+                                        // Copy the updated data to our session object
+                                        amadeusSessionWrapper.setSequenceNumber(refreshedSession.getSequenceNumber());
+                                        amadeusSessionWrapper.setLastQueryDate(refreshedSession.getLastQueryDate());
+                                        amadeusSessionWrapper.setQueryInProgress(refreshedSession.isQueryInProgress());
+                                        logger.debug("Split ticket - Session refreshed from database");
+                                        System.out.println("Split ticket - Session refreshed from database");
+                                    }
+                                } catch (Exception refreshEx) {
+                                    logger.warn("Split ticket - Failed to refresh session, continuing with retry: {}", refreshEx.getMessage());
+                                    System.out.println("Split ticket - Failed to refresh session, continuing with retry: " + refreshEx.getMessage());
+                                }
+                                
+                                continue; // Continue the loop to retry
+                            } catch (InterruptedException ie) {
+                                Thread.currentThread().interrupt();
+                                logger.error("Split ticket - Thread interrupted during retry delay");
+                                System.out.println("Split ticket - Thread interrupted during retry delay");
+                                return;
+                            }
+                        } else {
+                            logger.error("Split ticket - Failed to update session after {} attempts: {}", maxRetries, e.getMessage());
+                            System.out.println("Split ticket - Failed to update session after " + maxRetries + " attempts: " + e.getMessage());
+                            e.printStackTrace();
+                            return;
+                        }
+                    } else {
+                        logger.error("Split ticket - Unexpected error during session update: {}", e.getMessage());
+                        System.out.println("Split ticket - Unexpected error during session update: " + e.getMessage());
+                        e.printStackTrace();
+                        return;
+                    }
+                }
+            }
+        }
+    }
     @Override
     public List<SearchResponse> splitSearch(List<SearchParameters> searchParameters, ConcurrentHashMap<String, List<FlightItinerary>> concurrentHashMap, boolean isDomestic) throws Exception {
+        long splitSearchStartTime = System.currentTimeMillis();
+        logger.info("=== SPLIT TICKET AMADEUS SEARCH STARTED (MULTI-THREADED) ===");
+        System.out.println("=== SPLIT TICKET AMADEUS SEARCH STARTED (MULTI-THREADED) ===");
+        logger.info("Processing {} search parameters", searchParameters.size());
+        System.out.println("Processing " + searchParameters.size() + " search parameters");
+        
         List<SearchResponse> responses = new ArrayList<>();
         searchOfficeID = configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey());
         
-        logger.info("Split ticket - Starting search for {} parameters", searchParameters.size());
-        System.out.println("Split ticket - Starting search for " + searchParameters.size() + " parameters");
+        logger.info("Split ticket - Starting multi-threaded search for {} parameters", searchParameters.size());
+        System.out.println("Split ticket - Starting multi-threaded search for " + searchParameters.size() + " parameters");
         
+        // Create thread pool - allow more threads for true parallel execution
+        // Session manager will handle conflicts internally
+        int threadPoolSize = Math.min(searchParameters.size(), 6);
+        ExecutorService executor = Executors.newFixedThreadPool(threadPoolSize);
+        List<Future<SearchResponse>> futures = new ArrayList<>();
+        
+        logger.info("Created thread pool with {} threads", threadPoolSize);
+        System.out.println("Created thread pool with " + threadPoolSize + " threads");
+        
+        // Submit all search tasks to thread pool for true parallel execution
         for (int i = 0; i < searchParameters.size(); i++) {
-            SearchParameters searchParameters1 = searchParameters.get(i);
-            String from = searchParameters1.getJourneyList().get(0).getOrigin();
-            String to = searchParameters1.getJourneyList().get(searchParameters1.getJourneyList().size()-1).getDestination();
-            String route = from + " to " + to;
+            final int index = i;
+            final SearchParameters searchParameters1 = searchParameters.get(i);
             
-            long searchStartTime = System.currentTimeMillis();
-            logger.info("Split ticket - Search {} started at: {} - Route: {}", i + 1, new Date(searchStartTime), route);
-            System.out.println("Split ticket - Search " + (i + 1) + " started at: " + new Date(searchStartTime) + " - Route: " + route);
+            Future<SearchResponse> future = executor.submit(new Callable<SearchResponse>() {
+                @Override
+                public SearchResponse call() throws Exception {
+                    String from = searchParameters1.getJourneyList().get(0).getOrigin();
+                    String to = searchParameters1.getJourneyList().get(searchParameters1.getJourneyList().size()-1).getDestination();
+                    String route = from + " to " + to;
+                    
+                    long searchStartTime = System.currentTimeMillis();
+                    logger.info("Split ticket - Search {} started at: {} - Route: {} (Thread: {})", 
+                               index + 1, new Date(searchStartTime), route, Thread.currentThread().getName());
+                    System.out.println("Split ticket - Search " + (index + 1) + " started at: " + new Date(searchStartTime) + 
+                                     " - Route: " + route + " (Thread: " + Thread.currentThread().getName() + ")");
+                    
+                    FlightSearchOffice searchOffice = new FlightSearchOffice();
+                    searchOffice.setOfficeId(searchOfficeID);
+                    searchOffice.setName("");
+                    SearchResponse searchResponse = null;
+                    
+                    try {
+                        // Run searches in parallel without semaphore bottleneck
+                        logger.debug("Split ticket - Starting parallel search {} (Thread: {})", 
+                                   index + 1, Thread.currentThread().getName());
+                        System.out.println("Split ticket - Starting parallel search " + (index + 1) + 
+                                         " (Thread: " + Thread.currentThread().getName() + ")");
+                        
+                        if (isDomestic) {
+                            searchResponse = findNextSegmentDeparture(searchParameters1, searchOffice);
+                        } else {
+                            searchResponse = search(searchParameters1, searchOffice);
+                        }
+                        
+                        long searchEndTime = System.currentTimeMillis();
+                        long searchDuration = searchEndTime - searchStartTime;
+                        
+                        logger.info("Split ticket - Search {} completed at: {} (Duration: {} seconds) - Route: {} (Thread: {})", 
+                                   index + 1, new Date(searchEndTime), searchDuration/1000, route, Thread.currentThread().getName());
+                        System.out.println("Split ticket - Search " + (index + 1) + " completed at: " + new Date(searchEndTime) + 
+                                         " (Duration: " + searchDuration/1000 + " seconds) - Route: " + route + " (Thread: " + Thread.currentThread().getName() + ")");
+                        
+                        return searchResponse;
+                        
+                    } catch (Exception e) {
+                        long searchEndTime = System.currentTimeMillis();
+                        long searchDuration = searchEndTime - searchStartTime;
+                        
+                        logger.error("Split ticket - Search {} failed at: {} (Duration: {} seconds) - Route: {} - Error: {} (Thread: {})", 
+                                   index + 1, new Date(searchEndTime), searchDuration/1000, route, e.getMessage(), Thread.currentThread().getName());
+                        System.out.println("Split ticket - Search " + (index + 1) + " failed at: " + new Date(searchEndTime) + 
+                                         " (Duration: " + searchDuration/1000 + " seconds) - Route: " + route + " - Error: " + e.getMessage() + 
+                                         " (Thread: " + Thread.currentThread().getName() + ")");
+                        throw e;
+                    }
+                }
+            });
             
-            FlightSearchOffice searchOffice = new FlightSearchOffice();
-            searchOffice.setOfficeId(searchOfficeID);
-            searchOffice.setName("");
-            SearchResponse searchResponse = null;
-            
+            futures.add(future);
+        }
+        
+        logger.info("Submitted {} search tasks to thread pool", futures.size());
+        System.out.println("Submitted " + futures.size() + " search tasks to thread pool");
+        
+        // Collect results from all futures
+        long collectionStartTime = System.currentTimeMillis();
+        for (int i = 0; i < futures.size(); i++) {
             try {
-                if (isDomestic) {
-                    searchResponse = this.findNextSegmentDeparture(searchParameters1, searchOffice);
-                } else {
-                    searchResponse = this.search(searchParameters1, searchOffice);
+                Future<SearchResponse> future = futures.get(i);
+                SearchResponse searchResponse = future.get(); // This will block until the task completes
+                
+                if (searchResponse != null) {
+                    // Update concurrentHashMap with thread-safe operations
+                    String origin = searchParameters.get(i).getJourneyList().get(0).getOrigin();
+                    synchronized (concurrentHashMap) {
+                        if (concurrentHashMap.containsKey(origin)) {
+                            concurrentHashMap.get(origin).addAll(new ArrayList<FlightItinerary>(searchResponse.getAirSolution().getSeamenHashMap().values()));
+                            concurrentHashMap.get(origin).addAll(new ArrayList<FlightItinerary>(searchResponse.getAirSolution().getNonSeamenHashMap().values()));
+                            System.out.println("Size of non seamen if "+searchResponse.getAirSolution().getNonSeamenHashMap().values().size());
+                        } else {
+                            concurrentHashMap.put(origin, new ArrayList<FlightItinerary>(searchResponse.getAirSolution().getSeamenHashMap().values()));
+                            System.out.println("Size of non seamen else "+searchResponse.getAirSolution().getNonSeamenHashMap().values().size());
+                        }
+                    }
+                    
+                    responses.add(searchResponse);
+                    logger.info("Collected result {} of {} - Route: {}", i + 1, futures.size(), 
+                               searchParameters.get(i).getJourneyList().get(0).getOrigin() + " to " + 
+                               searchParameters.get(i).getJourneyList().get(searchParameters.get(i).getJourneyList().size()-1).getDestination());
+                    System.out.println("Collected result " + (i + 1) + " of " + futures.size());
                 }
                 
-                long searchEndTime = System.currentTimeMillis();
-                long searchDuration = searchEndTime - searchStartTime;
-                
-                logger.info("Split ticket - Search {} completed at: {} (Duration: {} seconds) - Route: {}", 
-                           i + 1, new Date(searchEndTime), searchDuration/1000, route);
-                System.out.println("Split ticket - Search " + (i + 1) + " completed at: " + new Date(searchEndTime) + 
-                                 " (Duration: " + searchDuration/1000 + " seconds) - Route: " + route);
-                
             } catch (Exception e) {
-                long searchEndTime = System.currentTimeMillis();
-                long searchDuration = searchEndTime - searchStartTime;
-                
-                logger.error("Split ticket - Search {} failed at: {} (Duration: {} seconds) - Route: {} - Error: {}", 
-                           i + 1, new Date(searchEndTime), searchDuration/1000, route, e.getMessage());
-                System.out.println("Split ticket - Search " + (i + 1) + " failed at: " + new Date(searchEndTime) + 
-                                 " (Duration: " + searchDuration/1000 + " seconds) - Route: " + route + " - Error: " + e.getMessage());
-                throw e;
-            }
-            
-            if (concurrentHashMap.containsKey(searchParameters1.getJourneyList().get(0).getOrigin())) {
-                concurrentHashMap.get(searchParameters1.getJourneyList().get(0).getOrigin()).addAll(new ArrayList<FlightItinerary>(searchResponse.getAirSolution().getSeamenHashMap().values()));
-                concurrentHashMap.get(searchParameters1.getJourneyList().get(0).getOrigin()).addAll(new ArrayList<FlightItinerary>(searchResponse.getAirSolution().getNonSeamenHashMap().values()));
-                System.out.println("Size of non seamen if "+searchResponse.getAirSolution().getNonSeamenHashMap().values().size());
-            } else {
-                concurrentHashMap.put(searchParameters1.getJourneyList().get(0).getOrigin(), new ArrayList<FlightItinerary>(searchResponse.getAirSolution().getSeamenHashMap().values()));
-                System.out.println("Size of non seamen else "+searchResponse.getAirSolution().getNonSeamenHashMap().values().size());
-                //concurrentHashMap.put(searchParameters1.getJourneyList().get(0).getOrigin(), new ArrayList<FlightItinerary>(searchResponse.getAirSolution().getNonSeamenHashMap().values()));
-            }
-            responses.add(searchResponse);
-        }
-        for (Map.Entry<String, List<FlightItinerary>> flightItineraryEntry : concurrentHashMap.entrySet()) {
-            logger.debug("flightItineraryEntry size: "+flightItineraryEntry.getKey()+"  -  "+flightItineraryEntry.getValue().size());
-            System.out.println("flightItineraryEntry size: "+flightItineraryEntry.getKey()+"  -  "+flightItineraryEntry.getValue().size());
-            if(flightItineraryEntry.getValue().size() == 0) {
-                concurrentHashMap.remove(flightItineraryEntry.getKey());
+                logger.error("Failed to get result from future {}: {}", i + 1, e.getMessage());
+                System.out.println("Failed to get result from future " + (i + 1) + ": " + e.getMessage());
+                e.printStackTrace();
             }
         }
+        
+        long collectionEndTime = System.currentTimeMillis();
+        long collectionDuration = collectionEndTime - collectionStartTime;
+        logger.info("Result collection took: {} ms ({} seconds)", collectionDuration, collectionDuration/1000);
+        System.out.println("Result collection took: " + collectionDuration + " ms (" + collectionDuration/1000 + " seconds)");
+        
+        // Clean up empty entries from concurrentHashMap
+        synchronized (concurrentHashMap) {
+            for (Map.Entry<String, List<FlightItinerary>> flightItineraryEntry : concurrentHashMap.entrySet()) {
+                logger.debug("flightItineraryEntry size: "+flightItineraryEntry.getKey()+"  -  "+flightItineraryEntry.getValue().size());
+                System.out.println("flightItineraryEntry size: "+flightItineraryEntry.getKey()+"  -  "+flightItineraryEntry.getValue().size());
+                if(flightItineraryEntry.getValue().size() == 0) {
+                    concurrentHashMap.remove(flightItineraryEntry.getKey());
+                }
+            }
+        }
+        
+        // Shutdown thread pool
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+                logger.warn("Thread pool did not terminate gracefully, forcing shutdown");
+                System.out.println("Thread pool did not terminate gracefully, forcing shutdown");
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+            logger.error("Thread pool shutdown interrupted", e);
+            System.out.println("Thread pool shutdown interrupted: " + e.getMessage());
+        }
+        
         System.out.println("responses "+responses.size());
+        
+        long splitSearchEndTime = System.currentTimeMillis();
+        long splitSearchDuration = splitSearchEndTime - splitSearchStartTime;
+        logger.info("=== SPLIT TICKET AMADEUS SEARCH COMPLETED (MULTI-THREADED) ===");
+        System.out.println("=== SPLIT TICKET AMADEUS SEARCH COMPLETED (MULTI-THREADED) ===");
+        logger.info("Total split ticket amadeus search time: {} ms ({} seconds)", 
+                   splitSearchDuration, splitSearchDuration/1000);
+        System.out.println("Total split ticket amadeus search time: " + splitSearchDuration + " ms (" + splitSearchDuration/1000 + " seconds)");
+        
         return responses;
     }
 
@@ -167,7 +357,7 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
         try {
             long startTime = System.currentTimeMillis();
             System.out.println("Start "+new Date());
-            amadeusSessionWrapper = amadeusSessionManager.getSession(office);
+            amadeusSessionWrapper = amadeusSessionManager.getSplitTicketSessionFast(office);
             System.out.println("End "+new Date());
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
@@ -189,6 +379,11 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
 
             logger.debug("...................................Amadeus Search Session used: " + Json.toJson(amadeusSessionWrapper.getmSession().value));
             logger.debug("Execution time in getting session:: " + duration/1000 + " seconds");//to be removed
+            
+            long searchExecutionStartTime = System.currentTimeMillis();
+            logger.info("Split ticket - Starting Amadeus API call at: {} - Route: {}", new Date(searchExecutionStartTime), route);
+            System.out.println("Split ticket - Starting Amadeus API call at: " + new Date(searchExecutionStartTime) + " - Route: " + route);
+            
             if (searchParameters.getBookingType() == BookingType.SEAMEN) {
                 seamenReply = serviceHandler.searchSplitAirlines(searchParameters, amadeusSessionWrapper,true);
                 amadeusLogger.debug("AmadeusSearchRes "+ new Date()+" ------->>"+ new XStream().toXML(seamenReply));
@@ -196,6 +391,12 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
                 fareMasterPricerTravelBoardSearchReply = serviceHandler.searchSplitAirlines(searchParameters, amadeusSessionWrapper,true);
                 amadeusLogger.debug("AmadeusSearchRes "+ new Date()+" ------->>"+ new XStream().toXML(fareMasterPricerTravelBoardSearchReply));
             }
+            
+            long searchExecutionEndTime = System.currentTimeMillis();
+            long searchExecutionDuration = searchExecutionEndTime - searchExecutionStartTime;
+            logger.info("Split ticket - Amadeus API call took: {} ms ({} seconds) - Route: {}", 
+                       searchExecutionDuration, searchExecutionDuration/1000, route);
+            System.out.println("Split ticket - Amadeus API call took: " + searchExecutionDuration + " ms (" + searchExecutionDuration/1000 + " seconds) - Route: " + route);
         } catch (ServerSOAPFaultException soapFaultException) {
 
             soapFaultException.printStackTrace();
@@ -211,7 +412,7 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
             searchResponse.getErrorMessageList().add(errorMessage);
             return searchResponse;
         }finally {
-            amadeusSessionManager.updateAmadeusSession(amadeusSessionWrapper);
+            updateSessionSafely(amadeusSessionWrapper);
         }
 
         FareMasterPricerTravelBoardSearchReply.ErrorMessage seamenErrorMessage = null;
@@ -242,10 +443,11 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
         
         long apiEndTime = System.currentTimeMillis();
         long apiDuration = apiEndTime - apiStartTime;
-        logger.info("Split ticket - Amadeus API call completed at: {} (Duration: {} seconds) - Route: {}", 
-                   new Date(apiEndTime), apiDuration/1000, route);
+        String bookingType = searchParameters.getBookingType() == BookingType.SEAMEN ? "SEAMEN" : "NON_SEAMEN";
+        logger.info("Split ticket - Amadeus API call completed at: {} (Duration: {} seconds) - Route: {} - BookingType: {}", 
+                   new Date(apiEndTime), apiDuration/1000, route, bookingType);
         System.out.println("Split ticket - Amadeus API call completed at: " + new Date(apiEndTime) + 
-                         " (Duration: " + apiDuration/1000 + " seconds) - Route: " + route);
+                         " (Duration: " + apiDuration/1000 + " seconds) - Route: " + route + " - BookingType: " + bookingType);
         
         return searchResponse;
     }
@@ -276,7 +478,7 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
         try {
             long startTime = System.currentTimeMillis();
             System.out.println("Start "+new Date());
-            amadeusSessionWrapper = amadeusSessionManager.getSession(office);
+            amadeusSessionWrapper = amadeusSessionManager.getSplitTicketSessionFast(office);
             System.out.println("End "+new Date());
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
@@ -320,7 +522,7 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
             searchResponse.getErrorMessageList().add(errorMessage);
             return searchResponse;
         }finally {
-            amadeusSessionManager.updateAmadeusSession(amadeusSessionWrapper);
+            updateSessionSafely(amadeusSessionWrapper);
         }
 
         FareMasterPricerTravelBoardSearchReply.ErrorMessage seamenErrorMessage = null;
@@ -350,10 +552,11 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
         
         long apiEndTime = System.currentTimeMillis();
         long apiDuration = apiEndTime - apiStartTime;
-        logger.info("Split ticket - Amadeus API call completed at: {} (Duration: {} seconds) - Route: {}", 
-                   new Date(apiEndTime), apiDuration/1000, route);
+        String bookingType = searchParameters.getBookingType() == BookingType.SEAMEN ? "SEAMEN" : "NON_SEAMEN";
+        logger.info("Split ticket - Amadeus API call completed at: {} (Duration: {} seconds) - Route: {} - BookingType: {}", 
+                   new Date(apiEndTime), apiDuration/1000, route, bookingType);
         System.out.println("Split ticket - Amadeus API call completed at: " + new Date(apiEndTime) + 
-                         " (Duration: " + apiDuration/1000 + " seconds) - Route: " + route);
+                         " (Duration: " + apiDuration/1000 + " seconds) - Route: " + route + " - BookingType: " + bookingType);
         
         return searchResponse;
     }

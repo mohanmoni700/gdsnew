@@ -70,6 +70,11 @@ public class SplitTicketSearchWrapper {
         return searchResponses;
     }
 
+    public List<SearchResponse> splitTransPointSearch(List<SearchParameters> searchParametersList, ConcurrentHashMap<String,List<FlightItinerary>> concurrentHashMap, boolean isDomestic) throws Exception {
+        List<SearchResponse> searchResponses = splitAmadeusSearch.splitSearch(searchParametersList, concurrentHashMap,isDomestic);
+        return searchResponses;
+    }
+
     public SearchResponse search(SearchParameters searchParameters, FlightSearchOffice office) throws Exception {
         SearchResponse searchResponse = splitAmadeusSearch.search(searchParameters, office);
         return searchResponse;
@@ -95,20 +100,6 @@ public class SplitTicketSearchWrapper {
         }
 
 
-        /*SearchParameters searchParameters1 = SerializationUtils.clone(searchParameters);
-        List<SearchJourney> journeyList = new ArrayList<>();
-        for (SearchJourney searchJourneyItem: searchParameters.getJourneyList()) {
-            SearchJourney searchJourney = SerializationUtils.clone(searchJourneyItem);
-            searchJourney.setOrigin(searchParameters.getJourneyList().get(0).getOrigin());
-            searchJourney.setDestination(splitTicketTransitAirports.get(0).getTransitAirport());
-            searchJourney.setTravelDate(searchParameters.getJou rneyList().get(0).getTravelDate());
-            searchJourney.setTravelDateStr(searchParameters.getJourneyList().get(0).getTravelDateStr());
-            journeyList.add(searchJourney);
-        }
-        searchParameters1.setJourneyList(journeyList);
-        searchParameters2.add(searchParameters1);*/
-
-
         ConcurrentHashMap<String,List<FlightItinerary>> concurrentHashMap = new ConcurrentHashMap<>();
         List<SearchResponse> responses = this.splitSearch(searchParameters2,concurrentHashMap,true);
         boolean isSeamenSearch = true;
@@ -125,27 +116,10 @@ public class SplitTicketSearchWrapper {
         logger.debug("responses "+Json.toJson(responses));
         Map<String, PossibleRoutes> possibleRoutesMap = this.findNextSegmentDepartureDate(responses,isSeamenSearch);
         System.out.println("responses "+Json.toJson(possibleRoutesMap));
-        //SplitTicketHelper splitTicketHelper = new SplitTicketHelper();
         List<SearchParameters> searchParameters3 = splitTicketHelper.createSplitSearchParameters(possibleRoutesMap,searchParameters, null);
         searchParameters2.addAll(searchParameters3);
         searchParametersList.addAll(searchParameters2);
         return searchParametersList;
-        /*List<SearchParameters> finalSearchParameters = new ArrayList<>();
-        for (SearchParameters sp : searchParametersList) {
-            SearchParameters seamenSp = SerializationUtils.clone(sp);
-            seamenSp.setBookingType(BookingType.SEAMEN);
-            finalSearchParameters.add(seamenSp);
-
-            SearchParameters nonMarineSp = SerializationUtils.clone(sp);
-            nonMarineSp.setBookingType(BookingType.NON_MARINE);
-            finalSearchParameters.add(nonMarineSp);
-        }
-        // De-duplicate using redisKey (captures journey, dates, pax, cabin, booking type, etc.)
-        Map<String, SearchParameters> uniqueByKey = new LinkedHashMap<>();
-        for (SearchParameters sp : finalSearchParameters) {
-            uniqueByKey.put(sp.redisKey(), sp);
-        }
-        return new ArrayList<>(uniqueByKey.values());*/
     }
 
     public List<SearchParameters> createSearch(SearchParameters searchParameters) throws Exception {
@@ -320,28 +294,49 @@ public class SplitTicketSearchWrapper {
     }
 
     public void searchSplitTicket(SearchParameters searchParameters) throws Exception {
+        long overallStartTime = System.currentTimeMillis();
+        logger.info("=== SPLIT TICKET SEARCH STARTED ===");
+        System.out.println("=== SPLIT TICKET SEARCH STARTED ===");
         logger.info("original searchParameters "+ Json.toJson(searchParameters));
+        
         try {
             SearchResponse searchResponse = null;
             List<SearchParameters> searchParameters1 = null;
             //configMap = configurationMasterService.getAllConfigurations(0, 0, "splitTicket");
             //transitEnabled = configMap.get(ConfigMasterConstants.SPLIT_TICKET_TRANSIT_ENABLED) != null && Boolean.parseBoolean(configMap.get(ConfigMasterConstants.SPLIT_TICKET_TRANSIT_ENABLED));
+            long configStartTime = System.currentTimeMillis();
             transitEnabled = Boolean.valueOf(configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_TRANSIT_ENABLED.getKey()));
+            long configEndTime = System.currentTimeMillis();
+            logger.info("Configuration fetch took: {} ms", configEndTime - configStartTime);
+            System.out.println("Configuration fetch took: " + (configEndTime - configStartTime) + " ms");
             System.out.println("transitEnabled "+transitEnabled);
             logger.debug("transitEnabled "+transitEnabled);
             if(transitEnabled) {
                 logger.info("#################Transit point enabled for split ticket search");
                 List<SearchParameters> searchParametersTransit = null;
+                long transitStartTime = System.currentTimeMillis();
                 List<SplitTicketTransitAirports> splitTicketTransitAirports = isTransitAdded(searchParameters);
+                long transitEndTime = System.currentTimeMillis();
+                logger.info("Transit airports lookup took: {} ms", transitEndTime - transitStartTime);
+                System.out.println("Transit airports lookup took: " + (transitEndTime - transitStartTime) + " ms");
                 System.out.println("splitTicketTransitAirports "+splitTicketTransitAirports.size());
                 logger.info("splitTicketTransitAirports "+Json.toJson(splitTicketTransitAirports));
+                long searchParamStartTime = System.currentTimeMillis();
                 if (splitTicketTransitAirports.size() > 0) {
                     searchParameters1 = createTransitPointSearch(searchParameters, splitTicketTransitAirports);
                 } else {
                     searchParameters1 = createSearch(searchParameters);
                 }
+                long searchParamEndTime = System.currentTimeMillis();
+                logger.info("Search parameters creation took: {} ms", searchParamEndTime - searchParamStartTime);
+                System.out.println("Search parameters creation took: " + (searchParamEndTime - searchParamStartTime) + " ms");
                 System.out.println("searchParameters1 before "+Json.toJson(searchParameters1));
+                
+                long nonSeamenStartTime = System.currentTimeMillis();
                 searchParametersTransit = createNonSeamenSearchParameters(searchParameters1, splitTicketTransitAirports);
+                long nonSeamenEndTime = System.currentTimeMillis();
+                logger.info("Non-seamen parameters creation took: {} ms", nonSeamenEndTime - nonSeamenStartTime);
+                System.out.println("Non-seamen parameters creation took: " + (nonSeamenEndTime - nonSeamenStartTime) + " ms");
                 System.out.println("searchParametersTransit before "+Json.toJson(searchParametersTransit));
                 if(splitTicketTransitAirports.size()>1) {
                     for (int i=0; i<splitTicketTransitAirports.size()-1; i++) {
@@ -355,11 +350,27 @@ public class SplitTicketSearchWrapper {
                 //System.out.println("searchParameters1 searchParameters1 after "+Json.toJson(searchParameters1));
             } else {
                 logger.info("#################Without Transit point enabled for split ticket search");
+                long searchParamStartTime = System.currentTimeMillis();
                 searchParameters1 = createSearch(searchParameters);
+                long searchParamEndTime = System.currentTimeMillis();
+                logger.info("Search parameters creation (no transit) took: {} ms", searchParamEndTime - searchParamStartTime);
+                System.out.println("Search parameters creation (no transit) took: " + (searchParamEndTime - searchParamStartTime) + " ms");
             }
             //System.out.println("after searchParameters1 "+Json.toJson(searchParameters1));
             logger.debug("Possible search routes "+Json.toJson(searchParameters1));
+            
+            long splitSearchStartTime = System.currentTimeMillis();
             createSplitSearch(searchParameters1, searchParameters);
+            long splitSearchEndTime = System.currentTimeMillis();
+            logger.info("Split search execution took: {} ms", splitSearchEndTime - splitSearchStartTime);
+            System.out.println("Split search execution took: " + (splitSearchEndTime - splitSearchStartTime) + " ms");
+            
+            long overallEndTime = System.currentTimeMillis();
+            logger.info("=== SPLIT TICKET SEARCH COMPLETED ===");
+            System.out.println("=== SPLIT TICKET SEARCH COMPLETED ===");
+            logger.info("Total split ticket search time: {} ms ({} seconds)", 
+                       overallEndTime - overallStartTime, (overallEndTime - overallStartTime) / 1000);
+            System.out.println("Total split ticket search time: " + (overallEndTime - overallStartTime) + " ms (" + (overallEndTime - overallStartTime) / 1000 + " seconds)");
         } catch (Exception e) {
             logger.error("Error in split ticket search", e);
             e.printStackTrace();
@@ -452,15 +463,50 @@ public class SplitTicketSearchWrapper {
     }
 
     public void createSplitSearch(List<SearchParameters> searchParameters, SearchParameters originalSearchRequest) throws Exception {
+        long dedupStartTime = System.currentTimeMillis();
         searchParameters = addNonMarineForSeamenAndDedup(searchParameters);
+        long dedupEndTime = System.currentTimeMillis();
+        logger.info("Deduplication process took: {} ms", dedupEndTime - dedupStartTime);
+        System.out.println("Deduplication process took: " + (dedupEndTime - dedupStartTime) + " ms");
+        
         splitAmadeusSearch.splitTicketSearch(searchParameters, originalSearchRequest, isSourceAirportDomestic,isDestinationAirportDomestic);
     }
 
-    // Adds a NON_MARINE variant for every SEAMEN search parameter and removes duplicates (by redisKey)
+    // Adds a NON_MARINE variant for every SEAMEN search parameter and removes duplicates (by redisKey and explicit duplicate check)
     private List<SearchParameters> addNonMarineForSeamenAndDedup(List<SearchParameters> searchParameters) {
         if (searchParameters == null || searchParameters.isEmpty()) {
             return searchParameters;
         }
+        
+        logger.info("=== DEDUPLICATION PROCESS STARTED ===");
+        logger.info("Input search parameters count: " + searchParameters.size());
+        
+        // Log input parameters for debugging and filter out same origin/destination
+        List<SearchParameters> filteredParameters = new ArrayList<>();
+        for (int i = 0; i < searchParameters.size(); i++) {
+            SearchParameters sp = searchParameters.get(i);
+            if (sp != null && sp.getJourneyList() != null && !sp.getJourneyList().isEmpty()) {
+                String origin = sp.getJourneyList().get(0).getOrigin();
+                String destination = sp.getJourneyList().get(sp.getJourneyList().size()-1).getDestination();
+                BookingType bookingType = sp.getBookingType();
+                
+                // Skip parameters where origin and destination are the same
+                if (origin.equals(destination)) {
+                    logger.warn("Skipping search parameter with same origin and destination: {} -> {} (BookingType: {})", 
+                               origin, destination, bookingType);
+                    System.out.println("Skipping search parameter with same origin and destination: " + origin + " -> " + destination + " (BookingType: " + bookingType + ")");
+                    continue;
+                }
+                
+                logger.info("Input param {}: {} -> {} (BookingType: {})", i+1, origin, destination, bookingType);
+                filteredParameters.add(sp);
+            }
+        }
+        
+        // Update searchParameters to use filtered list
+        searchParameters = filteredParameters;
+        logger.info("After filtering same origin/destination: " + searchParameters.size() + " parameters remain");
+        
         List<SearchParameters> expanded = new ArrayList<>(searchParameters.size() * 2);
         for (SearchParameters sp : searchParameters) {
             expanded.add(sp);
@@ -470,13 +516,72 @@ public class SplitTicketSearchWrapper {
                 expanded.add(nm);
             }
         }
-        Map<String, SearchParameters> unique = new LinkedHashMap<>();
+        
+        logger.info("After adding NON_MARINE variants: " + expanded.size());
+        
+        // Enhanced deduplication: Use both redisKey and explicit duplicate check
+        Map<String, SearchParameters> uniqueByRedisKey = new LinkedHashMap<>();
+        List<SearchParameters> finalList = new ArrayList<>();
+        
         for (SearchParameters sp : expanded) {
             if (sp != null) {
-                unique.put(sp.redisKey(), sp);
+                String redisKey = sp.redisKey();
+                
+                // Check if we already have this exact redisKey
+                if (uniqueByRedisKey.containsKey(redisKey)) {
+                    logger.warn("Duplicate found by redisKey - Skipping: {} -> {} (BookingType: {})", 
+                               sp.getJourneyList().get(0).getOrigin(), 
+                               sp.getJourneyList().get(sp.getJourneyList().size()-1).getDestination(),
+                               sp.getBookingType());
+                    continue;
+                }
+                
+                // Additional explicit duplicate check for same origin, destination, and booking type
+                boolean isDuplicate = false;
+                for (SearchParameters existing : finalList) {
+                    if (existing != null && 
+                        existing.getJourneyList() != null && !existing.getJourneyList().isEmpty() &&
+                        sp.getJourneyList() != null && !sp.getJourneyList().isEmpty()) {
+                        
+                        String existingOrigin = existing.getJourneyList().get(0).getOrigin();
+                        String existingDestination = existing.getJourneyList().get(existing.getJourneyList().size()-1).getDestination();
+                        String spOrigin = sp.getJourneyList().get(0).getOrigin();
+                        String spDestination = sp.getJourneyList().get(sp.getJourneyList().size()-1).getDestination();
+                        
+                        if (existingOrigin.equals(spOrigin) && 
+                            existingDestination.equals(spDestination) && 
+                            existing.getBookingType() == sp.getBookingType()) {
+                            
+                            logger.warn("Explicit duplicate found - Skipping: {} -> {} (BookingType: {})", 
+                                       spOrigin, spDestination, sp.getBookingType());
+                            isDuplicate = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!isDuplicate) {
+                    uniqueByRedisKey.put(redisKey, sp);
+                    finalList.add(sp);
+                }
             }
         }
-        return new ArrayList<>(unique.values());
+        
+        logger.info("=== DEDUPLICATION PROCESS COMPLETED ===");
+        logger.info("Final search parameters count: " + finalList.size());
+        
+        // Log final parameters for debugging
+        for (int i = 0; i < finalList.size(); i++) {
+            SearchParameters sp = finalList.get(i);
+            if (sp != null && sp.getJourneyList() != null && !sp.getJourneyList().isEmpty()) {
+                String origin = sp.getJourneyList().get(0).getOrigin();
+                String destination = sp.getJourneyList().get(sp.getJourneyList().size()-1).getDestination();
+                BookingType bookingType = sp.getBookingType();
+                logger.info("Final param {}: {} -> {} (BookingType: {})", i+1, origin, destination, bookingType);
+            }
+        }
+        
+        return finalList;
     }
 
 }

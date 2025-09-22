@@ -382,7 +382,7 @@ public class Airport extends Model implements Serializable {
 		String queryString = "SELECT id, airport_name, city_name, iata_code, country, latitude, longitude, " +
 				"(ROUND((6371 * ACOS(COS(RADIANS("+latitude+")) * COS(RADIANS(latitude)) * COS(RADIANS(longitude) - " +
 				" RADIANS("+longitude+"))+ SIN(RADIANS("+latitude+")) * SIN(RADIANS(latitude))))/1.609344)) AS distance" +
-				" FROM airport am WHERE classification <=2 order by distance,classification limit 3";
+				" FROM airport am WHERE classification <=2 order by distance,classification limit 2";
 		System.out.println(queryString);
 		RawSql rawSql = RawSqlBuilder.parse(queryString)
 				.columnMapping("id", "id")

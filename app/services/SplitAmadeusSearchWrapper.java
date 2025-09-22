@@ -136,9 +136,19 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
         return responses;
     }
 
+    @Override
+    public List<SearchResponse> splitTransitPointSearch(List<SearchParameters> searchParameters, ConcurrentHashMap<String, List<FlightItinerary>> concurrentHashMap, boolean isDomestic) throws Exception {
+        return null;
+    }
 
     public void splitTicketSearch(List<SearchParameters> searchParameters, SearchParameters originalSearchRequest, boolean isSourceAirportDomestic, boolean isDestinationAirportDomestic) throws Exception {
         final String redisKey = originalSearchRequest.redisKey();
+        long searchStartTime = System.currentTimeMillis();
+        logger.info("=== SPLIT AMADEUS SEARCH WRAPPER STARTED ===");
+        System.out.println("=== SPLIT AMADEUS SEARCH WRAPPER STARTED ===");
+        logger.info("Processing {} search parameters for key: {}", searchParameters.size(), redisKey);
+        System.out.println("Processing " + searchParameters.size() + " search parameters for key: " + redisKey);
+        
         try {
             System.out.println("searchParameters "+Json.toJson(searchParameters));
             ConcurrentHashMap<String, List<FlightItinerary>> concurrentHashMap = new ConcurrentHashMap<>();
@@ -152,10 +162,21 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
             List<SearchResponse> allSearchResponses = new ArrayList<>(); // To collect all results
             logger.debug("\n\n***********SEARCH STARTED key: [" + redisKey + "]***********");
             int queueSize = 10;
+            
+            long redisStartTime = System.currentTimeMillis();
             redisTemplate.opsForValue().set(redisKey + ":status", "started");
             redisTemplate.expire(redisKey, CacheConstants.CACHE_TIMEOUT_IN_SECS, TimeUnit.SECONDS);
+            long redisEndTime = System.currentTimeMillis();
+            logger.info("Redis setup took: {} ms", redisEndTime - redisStartTime);
+            System.out.println("Redis setup took: " + (redisEndTime - redisStartTime) + " ms");
+            
+            long threadPoolStartTime = System.currentTimeMillis();
             ThreadPoolExecutor newExecutor = new ThreadPoolExecutor(4, 10, Long.MAX_VALUE, TimeUnit.NANOSECONDS, new ArrayBlockingQueue<Runnable>(queueSize, true));
+            long threadPoolEndTime = System.currentTimeMillis();
+            logger.info("Thread pool creation took: {} ms", threadPoolEndTime - threadPoolStartTime);
+            System.out.println("Thread pool creation took: " + (threadPoolEndTime - threadPoolStartTime) + " ms");
 
+            long submitStartTime = System.currentTimeMillis();
             futureSearchResponseList.add(newExecutor.submit(new Callable<List<SearchResponse>>() {
                 @Override
                 public List<SearchResponse> call() throws Exception {
@@ -168,6 +189,9 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
                     return ticketIndigoSearch.splitSearch(searchParameters,concurrentHashMap,false);
                 }
             }));
+            long submitEndTime = System.currentTimeMillis();
+            logger.info("Task submission took: {} ms", submitEndTime - submitStartTime);
+            System.out.println("Task submission took: " + (submitEndTime - submitStartTime) + " ms");
 
             /********** Multi threaded search for single office id **********/
             logger.debug("["+redisKey+"] : " + futureSearchResponseList.size()+ "Threads initiated");
@@ -175,6 +199,9 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
             boolean loop = true;
             int searchResponseListSize = futureSearchResponseList.size();
             int exceptionCounter = 0;
+            long waitingStartTime = System.currentTimeMillis();
+            logger.info("Starting to wait for {} parallel search tasks", futureSearchResponseList.size());
+            System.out.println("Starting to wait for " + futureSearchResponseList.size() + " parallel search tasks");
 
             while (loop) {
                 ListIterator<Future<List<SearchResponse>>> listIterator = futureSearchResponseList.listIterator();
@@ -192,7 +219,23 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
                         System.out.println("counter "+counter);
                         try {
                             searchResponses1 = future.get();
-                            logger.debug("result size "+searchResponses1.size());
+                            logger.info("Future task #{} returned {} search responses", counter, searchResponses1.size());
+                            System.out.println("Future task #" + counter + " returned " + searchResponses1.size() + " search responses");
+                            
+                            for (SearchResponse sr : searchResponses1) {
+                                String provider = sr.getProvider();
+                                String officeId = sr.getFlightSearchOffice().getOfficeId();
+                                int flightCount = (sr.getAirSolution()!=null && sr.getAirSolution().getFlightItineraryList()!=null?sr.getAirSolution().getFlightItineraryList().size():0);
+                                
+                                logger.info("Search response provider: {} - officeId: {} - flightItineraryList size: {}", provider, officeId, flightCount);
+                                System.out.println("Search response provider: " + provider + " - officeId: " + officeId + " - flightItineraryList size: " + flightCount);
+                                
+                                // Additional logging for Indigo specifically
+                                if ("Indigo".equalsIgnoreCase(provider)) {
+                                    logger.info("INDIGO RESULT DETECTED - Provider: {} - OfficeId: {} - FlightCount: {}", provider, officeId, flightCount);
+                                    System.out.println("INDIGO RESULT DETECTED - Provider: " + provider + " - OfficeId: " + officeId + " - FlightCount: " + flightCount);
+                                }
+                            }
                         } catch (RetryException retryOnFailure) {
                             exceptionCounter++;
                             logger.error("retrialError in FlightSearchWrapper : ", retryOnFailure);
@@ -207,14 +250,36 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
 
                         if(searchResponses1 != null && searchResponses1.size() !=0) {
                             // Collect all search responses for later processing
+                            logger.info("Adding {} search responses to allSearchResponses (total before: {})", 
+                                       searchResponses1.size(), allSearchResponses.size());
+                            System.out.println("Adding " + searchResponses1.size() + " search responses to allSearchResponses (total before: " + allSearchResponses.size() + ")");
                             allSearchResponses.addAll(searchResponses1);
+                            logger.info("Total allSearchResponses after adding: {}", allSearchResponses.size());
+                            System.out.println("Total allSearchResponses after adding: " + allSearchResponses.size());
 
                         } else {
-                            logger.debug("["+redisKey+"]Received Response "+ counter +" Null" );
+                            logger.warn("["+redisKey+"]Received Response "+ counter +" is NULL or empty");
+                            System.out.println("[" + redisKey + "]Received Response " + counter + " is NULL or empty");
                         }
                     }
                 }
-                newExecutor.shutdown();
+                // Check if all futures are done
+                if (futureSearchResponseList.isEmpty()) {
+                    logger.info("All futures completed, processing results. Counter: {}, Expected: {}", counter, searchResponseListSize);
+                    System.out.println("All futures completed, processing results. Counter: " + counter + ", Expected: " + searchResponseListSize);
+                    newExecutor.shutdown();
+                    
+                    // Log final state of allSearchResponses
+                    logger.info("Final allSearchResponses count: {}", allSearchResponses.size());
+                    System.out.println("Final allSearchResponses count: " + allSearchResponses.size());
+                    for (int i = 0; i < allSearchResponses.size(); i++) {
+                        SearchResponse sr = allSearchResponses.get(i);
+                        String provider = sr.getProvider();
+                        logger.info("Final allSearchResponses[{}]: Provider = {}", i, provider);
+                        System.out.println("Final allSearchResponses[" + i + "]: Provider = " + provider);
+                    }
+                }
+                
                 if(counter == searchResponseListSize){
                     Integer timeout = CacheConstants.CACHE_TIMEOUT_IN_SECS;
                     if(errorMessageList.size() > 0){
@@ -234,14 +299,6 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
                         for (Map.Entry<String, List<FlightItinerary>> flightItineraryEntry : concurrentHashMap.entrySet()) {
                             logger.debug("flightItineraryEntry size: "+flightItineraryEntry.getKey()+"  -  "+flightItineraryEntry.getValue().size());
                             System.out.println("flightItineraryEntry size: "+flightItineraryEntry.getKey()+"  -  "+flightItineraryEntry.getValue().size());
-                            /*for (FlightItinerary flightItinerary : flightItineraryEntry.getValue()) {
-                                for (Journey journey: flightItinerary.getJourneyList()) {
-                                   // logger.debug(journey.getAirSegmentList().get(0).getFromLocation()+"  - "+ journey.getAirSegmentList().get(0).getAirline().getIataCode()+" - "+journey.getAirSegmentList().get(journey.getAirSegmentList().size()-1).getToLocation()+" - "+journey.getAirSegmentList().get(journey.getAirSegmentList().size()-1).getAirline().getIataCode());
-                                    //System.out.print(journey.getAirSegmentList().get(0).getFromLocation()+"  - "+ journey.getAirSegmentList().get(0).getAirline().getIataCode());
-                                    System.out.print(" - ");
-                                    //System.out.println(journey.getAirSegmentList().get(journey.getAirSegmentList().size()-1).getToLocation()+" - "+journey.getAirSegmentList().get(journey.getAirSegmentList().size()-1).getAirline().getIataCode());
-                                }
-                            }*/
                             if(flightItineraryEntry.getValue().size() == 0) {
                                 concurrentHashMap.remove(flightItineraryEntry.getKey());
                             }
@@ -305,6 +362,11 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
                     }
 
                     loop = false;
+                    long waitingEndTime = System.currentTimeMillis();
+                    logger.info("Total waiting time for parallel tasks: {} ms ({} seconds)", 
+                               waitingEndTime - waitingStartTime, (waitingEndTime - waitingStartTime) / 1000);
+                    System.out.println("Total waiting time for parallel tasks: " + (waitingEndTime - waitingStartTime) + " ms (" + (waitingEndTime - waitingStartTime) / 1000 + " seconds)");
+                    
                     if((flightItineraries == null || flightItineraries.size() == 0) && errorMessageList.size() > 0)  {
                         SearchResponse searchResponse = new SearchResponse();
                         searchResponse.setErrorMessageList(errorMessageList);
@@ -326,6 +388,13 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
                             newExecutor.getTaskCount(),
                             newExecutor.isShutdown(),
                             newExecutor.isTerminated()));
+
+            long searchEndTime = System.currentTimeMillis();
+            logger.info("=== SPLIT AMADEUS SEARCH WRAPPER COMPLETED ===");
+            System.out.println("=== SPLIT AMADEUS SEARCH WRAPPER COMPLETED ===");
+            logger.info("Total split amadeus search wrapper time: {} ms ({} seconds)", 
+                       searchEndTime - searchStartTime, (searchEndTime - searchStartTime) / 1000);
+            System.out.println("Total split amadeus search wrapper time: " + (searchEndTime - searchStartTime) + " ms (" + (searchEndTime - searchStartTime) / 1000 + " seconds)");
 
         }  catch (Exception e) {
             checkResponseAndSetStatus(null, redisKey);
@@ -459,6 +528,7 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
     }
 
 
+    @RetryOnFailure(attempts = 2, delay = 2000, exception = RetryException.class)
     public SearchResponse findNextSegmentDeparture(SearchParameters searchParameters, FlightSearchOffice office) throws Exception {
         logger.debug("##################### findNextSegmentDeparture in 463 AmadeusFlightSearch started  : ");
         logger.debug("#####################SearchParameters: \n"+ Json.toJson(searchParameters));
@@ -474,9 +544,9 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
 
         try {
             long startTime = System.currentTimeMillis();
-            System.out.println("Start "+new Date());
+            System.out.println("Start findNextSegmentDeparture "+new Date());
             amadeusSessionWrapper = amadeusSessionManager.getSession(office);
-            System.out.println("End "+new Date());
+            System.out.println("End findNextSegmentDeparture "+new Date());
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
 
@@ -504,7 +574,7 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
             searchResponse.getErrorMessageList().add(errorMessage);
             return searchResponse;
         }finally {
-            amadeusSessionManager.updateAmadeusSession(amadeusSessionWrapper);
+            amadeusSessionManager.updateSplitTicketSessionFast(amadeusSessionWrapper);
         }
 
         FareMasterPricerTravelBoardSearchReply.ErrorMessage seamenErrorMessage = null;
@@ -551,9 +621,9 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
 
         try {
             long startTime = System.currentTimeMillis();
-            System.out.println("Start "+new Date());
+            System.out.println("Start search "+new Date());
             amadeusSessionWrapper = amadeusSessionManager.getSession(office);
-            System.out.println("End "+new Date());
+            System.out.println("End search "+new Date());
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
 
@@ -581,7 +651,7 @@ public class SplitAmadeusSearchWrapper implements SplitAmadeusSearch {
             searchResponse.getErrorMessageList().add(errorMessage);
             return searchResponse;
         }finally {
-            amadeusSessionManager.updateAmadeusSession(amadeusSessionWrapper);
+            amadeusSessionManager.updateSplitTicketSessionFast(amadeusSessionWrapper);
         }
 
         FareMasterPricerTravelBoardSearchReply.ErrorMessage seamenErrorMessage = null;

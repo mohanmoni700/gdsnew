@@ -83,23 +83,45 @@ public class SplitTicketIndigoSearch implements SplitTicketSearch{
                 responses.add(searchResponse);
             } else {
                 SearchResponse searchResponse = search(searchParameters1, searchOffice);
-                if (searchResponse.getAirSolution().getFlightItineraryList().size()>0) {
+                //System.out.println("Indigo split ticket - Search " + (i + 1) + " completed for route " + searchResponse);
+                
+                // Check if there are flights in any of the hashmaps or flightItineraryList
+                boolean hasFlights = (searchResponse.getAirSolution().getFlightItineraryList() != null && searchResponse.getAirSolution().getFlightItineraryList().size() > 0) ||
+                                   (searchResponse.getAirSolution().getSeamenHashMap() != null && searchResponse.getAirSolution().getSeamenHashMap().size() > 0) ||
+                                   (searchResponse.getAirSolution().getNonSeamenHashMap() != null && searchResponse.getAirSolution().getNonSeamenHashMap().size() > 0);
+                
+                logger.info("Indigo search result - hasFlights: {}, flightItineraryList: {}, seamenHashMap: {}, nonSeamenHashMap: {}", 
+                           hasFlights,
+                           searchResponse.getAirSolution().getFlightItineraryList() != null ? searchResponse.getAirSolution().getFlightItineraryList().size() : 0,
+                           searchResponse.getAirSolution().getSeamenHashMap() != null ? searchResponse.getAirSolution().getSeamenHashMap().size() : 0,
+                           searchResponse.getAirSolution().getNonSeamenHashMap() != null ? searchResponse.getAirSolution().getNonSeamenHashMap().size() : 0);
+                System.out.println("Indigo search result - hasFlights: " + hasFlights + 
+                                  ", flightItineraryList: " + (searchResponse.getAirSolution().getFlightItineraryList() != null ? searchResponse.getAirSolution().getFlightItineraryList().size() : 0) +
+                                  ", seamenHashMap: " + (searchResponse.getAirSolution().getSeamenHashMap() != null ? searchResponse.getAirSolution().getSeamenHashMap().size() : 0) +
+                                  ", nonSeamenHashMap: " + (searchResponse.getAirSolution().getNonSeamenHashMap() != null ? searchResponse.getAirSolution().getNonSeamenHashMap().values().size() : 0));
+                
+                if (hasFlights) {
                     if (concurrentHashMap.containsKey(searchParameters1.getJourneyList().get(0).getOrigin())) {
                         concurrentHashMap.get(searchParameters1.getJourneyList().get(0).getOrigin()).addAll(new ArrayList<FlightItinerary>(searchResponse.getAirSolution().getSeamenHashMap().values()));
                         concurrentHashMap.get(searchParameters1.getJourneyList().get(0).getOrigin()).addAll(new ArrayList<FlightItinerary>(searchResponse.getAirSolution().getNonSeamenHashMap().values()));
-                        System.out.println("Size of non indigo seamen if "+searchResponse.getAirSolution().getNonSeamenHashMap().values().size());
+                        System.out.println("Indigo Size of non indigo seamen if "+searchResponse.getAirSolution().getNonSeamenHashMap().values().size());
                     } else {
                         List<FlightItinerary> indigoFlights = new ArrayList<>();
                         // Add both seamen and non-seamen flights
                         indigoFlights.addAll(new ArrayList<FlightItinerary>(searchResponse.getAirSolution().getSeamenHashMap().values()));
                         indigoFlights.addAll(new ArrayList<FlightItinerary>(searchResponse.getAirSolution().getNonSeamenHashMap().values()));
                         concurrentHashMap.put(searchParameters1.getJourneyList().get(0).getOrigin(), indigoFlights);
-                        System.out.println("Size of indigo seamen: " + searchResponse.getAirSolution().getSeamenHashMap().values().size());
-                        System.out.println("Size of indigo non seamen: " + searchResponse.getAirSolution().getNonSeamenHashMap().values().size());
-                        System.out.println("Total indigo flights added: " + indigoFlights.size());
+                        System.out.println("Indigo Size of indigo seamen: " + searchResponse.getAirSolution().getSeamenHashMap().values().size());
+                        System.out.println("Indigo Size of indigo non seamen: " + searchResponse.getAirSolution().getNonSeamenHashMap().values().size());
+                        System.out.println("Indigo Total indigo flights added: " + indigoFlights.size());
                     }
-                    responses.add(searchResponse);
                 }
+                
+                // Always add the search response to responses, even if no flights found
+                // This ensures Indigo results are included in allSearchResponses
+                responses.add(searchResponse);
+                logger.info("Added Indigo SearchResponse to responses list. Total responses: {}", responses.size());
+                System.out.println("Added Indigo SearchResponse to responses list. Total responses: " + responses.size());
                 
                 long searchEndTime = System.currentTimeMillis();
                 long searchDuration = searchEndTime - searchStartTime;
@@ -123,8 +145,8 @@ public class SplitTicketIndigoSearch implements SplitTicketSearch{
 
         System.out.println("indigo split search response size: "+responses.size());
         System.out.println("indigo split search concurrentHashMap size: "+concurrentHashMap.size());
-        //logger.info("indigo split search concurrentHashMap details response : "+ Json.toJson(responses));
-        //logger.info("indigo split search concurrentHashMap details: "+ Json.toJson(concurrentHashMap));
+        logger.info("indigo split search concurrentHashMap details response : "+ Json.toJson(responses));
+        logger.info("indigo split search concurrentHashMap details: "+ Json.toJson(concurrentHashMap));
         return responses;
     }
 
@@ -139,10 +161,12 @@ public class SplitTicketIndigoSearch implements SplitTicketSearch{
                     String responseBody = response.body().string();
                     SearchResponse searchResponse = objectMapper.readValue(responseBody, SearchResponse.class);
                     indigoLogger.debug("Indigo Flight Search Response: " + responseBody);
+                    System.out.println("Indigo search response ");
                     searchResponse.setFlightSearchOffice(office);
                     searchResponse.setProvider("Indigo");
                     return searchResponse;
                 } else {
+                    System.out.println("Indigo search response failed");
                     logger.error("Failed to fetch data from Indigo API: " + response.message() +
                             " for search parameters: " + Json.toJson(searchParameters));
                     SearchResponse searchResponse = new SearchResponse();
@@ -155,6 +179,7 @@ public class SplitTicketIndigoSearch implements SplitTicketSearch{
         } catch (Exception e) {
             logger.error("Error during Indigo flight search: " + e.getMessage() +
                     " for search parameters: " + Json.toJson(searchParameters), e);
+            System.out.println("Indigo search response exception "+e.getMessage());
             //e.printStackTrace();
             SearchResponse searchResponse = new SearchResponse();
             searchResponse.setFlightSearchOffice(office);
