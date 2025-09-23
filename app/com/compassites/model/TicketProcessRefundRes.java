@@ -13,6 +13,24 @@ public class TicketProcessRefundRes {
     private String currency;
 
     private ErrorMessage message;
+    private List<String> ticketIdsList;
+
+    public List<String> getTicketIdsList() {
+        return ticketIdsList;
+    }
+
+    public void setTicketIdsList(List<String> ticketIdsList) {
+        this.ticketIdsList = ticketIdsList;
+    }
+    private PNRResponse pnrResponse;
+
+    public PNRResponse getPnrResponse() {
+        return pnrResponse;
+    }
+
+    public void setPnrResponse(PNRResponse pnrResponse) {
+        this.pnrResponse = pnrResponse;
+    }
 
     List<PerPaxRefundPricingInformation> perPaxRefundPricingInformationList;
 

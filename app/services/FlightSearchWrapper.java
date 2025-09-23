@@ -48,7 +48,7 @@ public class FlightSearchWrapper {
         int maxThreads = 1;
         for(FlightSearch flightSearch : flightSearchList){
             if(flightSearch.getOfficeList() == null || flightSearch.getOfficeList().size() == 0)
-                  maxThreads += 1;
+                  maxThreads += 2;
             else
                 maxThreads += flightSearch.getOfficeList().size();
         }

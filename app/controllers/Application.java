@@ -5,6 +5,7 @@ import com.compassites.model.*;
 import com.compassites.model.traveller.TravellerMasterInfo;
 import com.compassites.model.travelomatrix.ResponseModels.TraveloMatrixFaruleReply;
 import com.compassites.model.travelomatrix.ResponseModels.UpdatePNR.UpdatePNRResponse;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -728,12 +729,19 @@ public class Application {
                 ticketList.add(ticketNode.asText());
             }
         }
-        ticketCheckEligibilityRes = refundServiceWrapper.checkPartRefundTicketEligibility(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId);
+        JsonNode ticketIds = json.get("ticketIds");
+        List<String> ticketIdsList = new LinkedList<>();
+        if(ticketIds != null && ticketIds.isArray()){
+            for(JsonNode ticketIdNode : ticketIds){
+                ticketIdsList.add(ticketIdNode.asText());
+            }
+        }
+        ticketCheckEligibilityRes = refundServiceWrapper.checkPartRefundTicketEligibility(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId,ticketIdsList);
         return ok(Json.toJson(ticketCheckEligibilityRes));
     }
 
     @BodyParser.Of(BodyParser.Json.class)
-    public Result processPartialRefund() {
+    public Result processPartialRefund() throws IOException {
         TicketProcessRefundRes ticketProcessRefundRes = null;
         JsonNode json = request().body().asJson();
         String provider = json.get("provider").asText();
@@ -741,13 +749,22 @@ public class Application {
         String searchOfficeId = json.get("searchOffice").asText();
         JsonNode ticketsNode = json.get("tickets");
         String ticketingOfficeId = json.get("ticketingOfficeId").asText();
+        JsonNode indigoPaxNumbersNode = json.get("indigoPaxNumbers");
+        TravellerMasterInfo travellerMasterInfo = Json.fromJson(json.findPath("masterInfo"), TravellerMasterInfo.class);
         List<String> ticketList = new LinkedList<>();
         if (ticketsNode != null && ticketsNode.isArray()) {
             for (JsonNode ticketNode : ticketsNode) {
                 ticketList.add(ticketNode.asText());
             }
         }
-        ticketProcessRefundRes = refundServiceWrapper.processPartialRefund(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId);
+
+        ObjectMapper mapper = new ObjectMapper();
+        List<IndigoPaxNumber> indigoPaxNumbers = mapper.convertValue(
+                indigoPaxNumbersNode,
+                new TypeReference<List<IndigoPaxNumber>>() {}
+        );
+
+        ticketProcessRefundRes = refundServiceWrapper.processPartialRefund(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId,indigoPaxNumbers, travellerMasterInfo);
         return ok(Json.toJson(ticketProcessRefundRes));
     }
 

@@ -1,12 +1,34 @@
 package dto.refund;
 
 import com.compassites.model.traveller.TravellerMasterInfo;
+import dto.IndigoPaxNumber;
+
+import java.util.List;
 
 public class IndigoRefundRequest {
     private String gdsPNR;
     private String searchOfficeId;
     private String ticketingOfficeId;
     private TravellerMasterInfo travellerMasterInfo;
+    private List<String> ticketIdsList;
+
+    public List<String> getTicketIdsList() {
+        return ticketIdsList;
+    }
+
+    public void setTicketIdsList(List<String> ticketIdsList) {
+        this.ticketIdsList = ticketIdsList;
+    }
+
+    private List<IndigoPaxNumber> indigoPaxNumbers;
+
+    public List<IndigoPaxNumber> getIndigoPaxNumbers() {
+        return indigoPaxNumbers;
+    }
+
+    public void setIndigoPaxNumbers(List<IndigoPaxNumber> indigoPaxNumbers) {
+        this.indigoPaxNumbers = indigoPaxNumbers;
+    }
 
     public TravellerMasterInfo getTravellerMasterInfo() {
         return travellerMasterInfo;
