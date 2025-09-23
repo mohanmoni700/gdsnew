@@ -84,11 +84,13 @@ public class UtilService {
         Map<String, AmadeusConvertCurrencyRS> amadeusExchangeRatesMap = new HashMap<>();
         try {
 
+            ServiceHandler  serviceHandler1  = new ServiceHandler();
+
             //Login
-            AmadeusSessionWrapper amadeusSessionWrapper = serviceHandler.logIn(false);
+            AmadeusSessionWrapper amadeusSessionWrapper = serviceHandler1.logIn(false);
 
             //Getting convert currency response here
-            FareConvertCurrencyReply fareConvertCurrencyReply = serviceHandler.getFareConvertCurrencyReply(amadeusSessionWrapper, amadeusConvertCurrencyRQ);
+            FareConvertCurrencyReply fareConvertCurrencyReply = serviceHandler1.getFareConvertCurrencyReply(amadeusSessionWrapper, amadeusConvertCurrencyRQ);
 
             List<FareConvertCurrencyReply.ConversionDetails> conversionDetailsList = fareConvertCurrencyReply.getConversionDetails();
 

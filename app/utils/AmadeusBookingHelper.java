@@ -20,6 +20,7 @@ import com.amadeus.xml.ttstrr_13_1_1a.*;
 import com.amadeus.xml.ttstrr_13_1_1a.ReferencingDetailsTypeI;
 import com.amadeus.xml.ttstrr_13_1_1a.TransportIdentifierType;
 import com.compassites.GDSWrapper.amadeus.FareRules;
+import com.compassites.GDSWrapper.amadeus.ServiceHandler;
 import com.compassites.constants.AmadeusConstants;
 import com.compassites.model.*;
 import com.compassites.model.traveller.Traveller;
@@ -40,6 +41,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import services.AmadeusSourceOfficeService;
+import services.UtilService;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -1594,6 +1596,11 @@ public class AmadeusBookingHelper {
         Map<String, BigDecimal> taxes = new HashMap<>();
         for (TicketDisplayTSTReply.FareList.TaxInformation taxInformation : taxInformationList) {
             String amount = taxInformation.getAmountDetails().getFareDataMainInformation().getFareAmount();
+            String fareCurrency = taxInformation.getAmountDetails().getFareDataMainInformation().getFareCurrency();
+            if(!fareCurrency.equalsIgnoreCase("INR")){
+                BigDecimal convertCurrency = convertCurrency(new BigDecimal(amount), fareCurrency);
+                amount = convertCurrency.toString();
+            }
             String taxCode = taxInformation.getTaxDetails().getTaxType().getIsoCountry();
             if (taxes.containsKey(taxCode)) {
                 taxes.put(taxCode, taxes.get(taxCode).add(new BigDecimal(amount)));
@@ -3237,6 +3244,229 @@ public class AmadeusBookingHelper {
                 throw new IllegalArgumentException("Cannot parse date: " + dateStr);
             }
         }
+
+    }
+
+    //  Upload booking for pricing and convert PNR currency to INR
+    public static PricingInformation getPricingInfoFromTSTForUploadBooking(PNRReply gdsPNRReply, TicketDisplayTSTReply ticketDisplayTSTReply, boolean isSeamen, List<Journey> journeyList) {
+        BigDecimal totalPriceOfBooking = new BigDecimal(0);
+        BigDecimal basePriceOfBooking = new BigDecimal(0);
+        BigDecimal adtBaseFare = new BigDecimal(0);
+        BigDecimal chdBaseFare = new BigDecimal(0);
+        BigDecimal infBaseFare = new BigDecimal(0);
+        BigDecimal adtTotalFare = new BigDecimal(0);
+        BigDecimal chdTotalFare = new BigDecimal(0);
+        BigDecimal infTotalFare = new BigDecimal(0);
+
+        String currency = null;
+
+        List<TicketDisplayTSTReply.FareList> fareList = ticketDisplayTSTReply.getFareList();
+        PricingInformation pricingInformation = new PricingInformation();
+
+        Map<String, TSTPrice> tstPriceMap = new HashMap<>();
+
+        Map<String, Object> airSegmentRefMap = new HashMap<>();
+        Map<String, Object> travellerMap = new HashMap<>();
+        Map<String, String> passengerType = new HashMap<>();
+
+        for (PNRReply.OriginDestinationDetails originDestination : gdsPNRReply.getOriginDestinationDetails()) {
+            for (PNRReply.OriginDestinationDetails.ItineraryInfo itineraryInfo : originDestination.getItineraryInfo()) {
+                String segType = itineraryInfo.getElementManagementItinerary().getSegmentName();
+                if (segType.equalsIgnoreCase("AIR")) {
+                    String segmentRef = "S" + itineraryInfo.getElementManagementItinerary().getReference().getNumber();
+                    String segments = itineraryInfo.getTravelProduct().getBoardpointDetail().getCityCode() + itineraryInfo.getTravelProduct().getOffpointDetail().getCityCode();
+                    airSegmentRefMap.put(segmentRef, segments);
+                }
+            }
+        }
+        for (PNRReply.TravellerInfo travellerInfo : gdsPNRReply.getTravellerInfo()) {
+            String key = "P" + travellerInfo.getElementManagementPassenger().getReference().getNumber();
+            String infantIndicator = travellerInfo.getPassengerData().get(0).getTravellerInformation().getPassenger().get(0).getInfantIndicator();
+            travellerMap.put(key, travellerInfo);
+            if (!isSeamen) {
+                PassengerData paxData = travellerInfo.getPassengerData().get(0);
+                String paxType = paxData.getTravellerInformation().getPassenger().get(0).getType();
+                if ("chd".equalsIgnoreCase(paxType) || "ch".equalsIgnoreCase(paxType)) {
+                    passengerType.put(key, "CHD");
+                } else if ("inf".equalsIgnoreCase(paxType) || "in".equalsIgnoreCase(paxType)) {
+                    passengerType.put(key, "INF");
+                } else {
+                    passengerType.put(key, "ADT");
+                }
+
+                if (infantIndicator != null && "1".equalsIgnoreCase(infantIndicator)) {
+                    passengerType.put("PI" + travellerInfo.getElementManagementPassenger().getReference().getNumber(), "INF");
+                }
+            } else {
+                passengerType.put(key, "ADT");
+                if (infantIndicator != null && "1".equalsIgnoreCase(infantIndicator)) {
+                    passengerType.put("PI" + travellerInfo.getElementManagementPassenger().getReference().getNumber(), "ADT");
+                }
+            }
+        }
+
+        Map<String, AirSegmentInformation> segmentMap = new HashMap<>();
+        for (Journey journey : journeyList) {
+            for (AirSegmentInformation airSegment : journey.getAirSegmentList()) {
+                String key = airSegment.getFromLocation() + airSegment.getToLocation();
+                segmentMap.put(key, airSegment);
+            }
+        }
+
+        List<SegmentPricing> segmentPricingList = new ArrayList<>();
+        List<PassengerTax> passengerTaxList = new ArrayList<>();
+        boolean segmentWisePricing = false;
+        for (TicketDisplayTSTReply.FareList fare : fareList) {
+            BigDecimal totalFarePerPaxType = new BigDecimal(0);
+            BigDecimal paxTotalFare = new BigDecimal(0);
+            BigDecimal baseFareOfPerPaxType = new BigDecimal(0);
+
+            SegmentPricing segmentPricing = new SegmentPricing();
+            boolean equivalentFareAvailable = false;
+            BigDecimal baseFare = new BigDecimal(0);
+            for (MonetaryInformationDetailsTypeI211824C fareData : fare.getFareDataInformation().getFareDataSupInformation()) {
+                BigDecimal amount = new BigDecimal(0);
+                try {
+                    amount = new BigDecimal(fareData.getFareAmount());
+                } catch (Exception e) {
+                    logger.debug("Fare Amount Not a Valid Decimal {} so taking the default value 0 as amount {} ", fareData.getFareAmount(), e.getMessage(), e);
+                }
+
+                if (AmadeusConstants.TOTAL_FARE_IDENTIFIER.equals(fareData.getFareDataQualifier())) {
+                   currency = fareData.getFareCurrency();
+                    // converting all currency to INR for upload booking case
+                    paxTotalFare = convertCurrency(amount , currency);
+                }
+                if ("B".equalsIgnoreCase(fareData.getFareDataQualifier()) || "E".equalsIgnoreCase(fareData.getFareDataQualifier())) {
+                    if (!equivalentFareAvailable) {
+//                        baseFare = amount;
+                        currency = fareData.getFareCurrency();
+                        // converting all currency to INR for upload booking case
+                        baseFare = convertCurrency(amount , currency);
+
+                    }
+                }
+                if ("E".equalsIgnoreCase(fareData.getFareDataQualifier())) {
+                    equivalentFareAvailable = true;
+                }
+            }
+
+            int paxCount = fare.getPaxSegReference().getRefDetails().size();
+            String paxTypeKey = "P" + fare.getPaxSegReference().getRefDetails().get(0).getRefNumber();
+            if ("PI".equalsIgnoreCase(fare.getPaxSegReference().getRefDetails().get(0).getRefQualifier())) {
+                paxTypeKey = fare.getPaxSegReference().getRefDetails().get(0).getRefQualifier() + fare.getPaxSegReference().getRefDetails().get(0).getRefNumber();
+            }
+            String paxType = passengerType.get(paxTypeKey);
+            totalFarePerPaxType = totalFarePerPaxType.add(paxTotalFare.multiply(new BigDecimal(paxCount)));
+            baseFareOfPerPaxType = baseFareOfPerPaxType.add(baseFare.multiply(new BigDecimal(paxCount)));
+            PassengerTax passengerTax = getTaxDetailsFromTST(fare.getTaxInformation(), paxType, paxCount);
+            passengerTaxList.add(passengerTax);
+
+            if (airSegmentRefMap.size() != fare.getSegmentInformation().size()) {
+                segmentWisePricing = true;
+            }
+            List<String> segmentKeys = new ArrayList<>();
+            //if(segmentWisePricing){
+            for (TicketDisplayTSTReply.FareList.SegmentInformation segmentInformation : fare.getSegmentInformation()) {
+                if (segmentInformation.getSegmentReference() != null && segmentInformation.getSegmentReference().getRefDetails() != null) {
+                    ReferencingDetailsTypeI referencingDetailsTypeI = segmentInformation.getSegmentReference().getRefDetails().get(0);
+                    String key = referencingDetailsTypeI.getRefQualifier() + referencingDetailsTypeI.getRefNumber();
+                    segmentKeys.add(airSegmentRefMap.get(key).toString().toLowerCase());
+                }
+
+            }
+            //}
+            segmentPricing.setSegmentKeysList(segmentKeys);
+            segmentPricing.setTotalPrice(totalFarePerPaxType);
+            segmentPricing.setBasePrice(baseFareOfPerPaxType);
+            segmentPricing.setTax(totalFarePerPaxType.subtract(baseFareOfPerPaxType));
+            segmentPricing.setPassengerType(paxType);
+            segmentPricing.setPassengerTax(passengerTax);
+            segmentPricing.setPassengerCount(new Long(paxCount));
+            segmentPricing.setTstSequenceNumber(fare.getFareReference().getIDDescription().getIDSequenceNumber());
+            segmentPricingList.add(segmentPricing);
+            if ("CHD".equalsIgnoreCase(paxType)) {
+                chdBaseFare = chdBaseFare.add(baseFare);
+                chdTotalFare = chdTotalFare.add(paxTotalFare);
+            } else if ("INF".equalsIgnoreCase(paxType)) {
+                infBaseFare = infBaseFare.add(baseFare);
+                infTotalFare = infTotalFare.add(paxTotalFare);
+            } else {
+                adtBaseFare = adtBaseFare.add(baseFare);
+                adtTotalFare = adtTotalFare.add(paxTotalFare);
+            }
+            totalPriceOfBooking = totalPriceOfBooking.add(totalFarePerPaxType);
+            basePriceOfBooking = basePriceOfBooking.add(baseFareOfPerPaxType);
+
+            TSTPrice tstPrice = getTSTPrice(fare, paxTotalFare, baseFare, paxType, passengerTax);
+            for (TicketDisplayTSTReply.FareList.SegmentInformation segmentInformation : fare.getSegmentInformation()) {
+                for (String key : segmentMap.keySet()) {
+                    for (Object airSegVal : airSegmentRefMap.values()) {
+                        if (key.equals(airSegVal) && segmentInformation.getFareQualifier() != null && segmentInformation.getFareQualifier().size() > 0) {
+                            String farebasis = segmentInformation.getFareQualifier().get(0).getFareBasisDetails().getPrimaryCode()
+                                    + segmentInformation.getFareQualifier().get(0).getFareBasisDetails().getFareBasisCode();
+                            segmentMap.get(key).setFareBasis(farebasis);
+                        }
+                    }
+                }
+
+                if (segmentInformation.getSegmentReference() != null && segmentInformation.getSegmentReference().getRefDetails() != null) {
+                    ReferencingDetailsTypeI referencingDetailsTypeI = segmentInformation.getSegmentReference().getRefDetails().get(0);
+                    String key = referencingDetailsTypeI.getRefQualifier() + referencingDetailsTypeI.getRefNumber();
+
+                    String tstKey = airSegmentRefMap.get(key).toString() + paxType;
+                    tstPriceMap.put(tstKey.toLowerCase(), tstPrice);
+                }
+            }
+
+        }
+
+        pricingInformation.setSegmentWisePricing(segmentWisePricing);
+        pricingInformation.setSegmentPricingList(segmentPricingList);
+        logger.debug("getPricingInfoFromTST begin....adtBaseFare..." + adtBaseFare);
+        pricingInformation.setAdtBasePrice(adtBaseFare);
+        pricingInformation.setAdtTotalPrice(adtTotalFare);
+        pricingInformation.setChdBasePrice(chdBaseFare);
+        pricingInformation.setChdTotalPrice(chdTotalFare);
+        pricingInformation.setInfBasePrice(infBaseFare);
+        pricingInformation.setInfTotalPrice(infTotalFare);
+        logger.debug("getPricingInfoFromTST begin....currency..." + currency);
+
+        // because converting all currency to INR for upload booking case
+        pricingInformation.setGdsCurrency("INR");
+        pricingInformation.setTotalPrice(totalPriceOfBooking);
+        pricingInformation.setTotalPriceValue(totalPriceOfBooking);
+        pricingInformation.setBasePrice(basePriceOfBooking);
+        pricingInformation.setTax(totalPriceOfBooking.subtract(basePriceOfBooking));
+        pricingInformation.setProvider(PROVIDERS.AMADEUS.toString());
+        pricingInformation.setPassengerTaxes(passengerTaxList);
+
+        pricingInformation.setTstPriceMap(tstPriceMap);
+        return pricingInformation;
+    }
+
+    private static BigDecimal convertCurrency(BigDecimal amount, String currency) {
+
+        if(currency.equalsIgnoreCase("INR")) {
+            return amount;
+        }
+
+        try {
+            AmadeusConvertCurrencyRQ amadeusConvertCurrencyRQ = new AmadeusConvertCurrencyRQ();
+            amadeusConvertCurrencyRQ.setFromCurrency(currency);
+            amadeusConvertCurrencyRQ.setToCurrency("INR");
+            UtilService utilService = new UtilService();
+            Map<String, AmadeusConvertCurrencyRS> amadeusExchangeInfo = utilService.getAmadeusExchangeInfo(amadeusConvertCurrencyRQ);
+            AmadeusConvertCurrencyRS amadeusConvertCurrencyRS = amadeusExchangeInfo.get("BSR");
+            logger.debug("Exchange Rate from " + currency + " to INR : " + amount + " exchangeRate: " + amadeusConvertCurrencyRS.getConversionRate());
+            BigDecimal exchangeRate = amadeusConvertCurrencyRS.getConversionRate();
+            amount = amount.multiply(exchangeRate);
+            return amount;
+
+        } catch (Exception e) {
+            logger.error("Exception in Currency Conversion : " + e.getMessage(), e);
+        }
+        return null;
 
     }
 

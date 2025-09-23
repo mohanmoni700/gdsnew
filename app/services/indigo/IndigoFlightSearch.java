@@ -17,6 +17,7 @@ import play.libs.Json;
 import services.FlightSearch;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.net.URI;
 
@@ -26,7 +27,14 @@ import java.util.concurrent.*;
 @Service
 public class IndigoFlightSearch implements FlightSearch {
 
-    private static final OkHttpClient client = new OkHttpClient();
+//    private static final OkHttpClient client = new OkHttpClient();
+
+    private static final OkHttpClient client = new OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build();
+
     private static final String endPoint = Play.application().configuration().getString("indigo.service.endPoint");
 
     static Logger logger = LoggerFactory.getLogger("gds");
@@ -39,6 +47,7 @@ public class IndigoFlightSearch implements FlightSearch {
             String jsonString = objectMapper.writeValueAsString(searchParameters);
             RequestBody requestBody = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
             Request request = new Request.Builder().url(endPoint+"flightSearch").post(requestBody).build();
+            logger.debug("Indigo Search Initiation {}  {}",new Date(), jsonString);
             try (Response response = client.newCall(request).execute()) {
                 if (response.isSuccessful()) {
                     String responseBody = response.body().string();

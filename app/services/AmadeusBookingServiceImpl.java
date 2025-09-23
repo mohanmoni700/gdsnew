@@ -2268,7 +2268,7 @@ public class AmadeusBookingServiceImpl implements BookingService {
             validatingCarrierInSegment(fareList, flightItinerary, isSeamen, gdsPNRReply);
 
 
-            pricingInfo = getPricingInfoFromTST(gdsPNRReply, ticketDisplayTSTReply, isSeamen, journeyList);
+            pricingInfo = getPricingInfoFromTSTForUploadBooking(gdsPNRReply, ticketDisplayTSTReply, isSeamen, journeyList);
             if (isSeamen) {
                 flightItinerary.setSeamanPricingInformation(pricingInfo);
             } else {
