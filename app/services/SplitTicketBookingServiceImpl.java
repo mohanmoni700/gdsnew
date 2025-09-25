@@ -692,7 +692,9 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                 checkFlightAvailibility(travellerMasterInfo, pnrResponse, amadeusSessionWrapper);
                 System.out.println("Flight Available : " + pnrResponse.isFlightAvailable());
                 if (pnrResponse.isFlightAvailable()) {
-                    gdsPNRReply = serviceHandler.addTravellerInfoToPNR(travellerMasterInfo, amadeusSessionWrapper);
+                    if(!isFirstSegmentSell) {
+                        gdsPNRReply = serviceHandler.addTravellerInfoToPNR(travellerMasterInfo, amadeusSessionWrapper);
+                    }
                     /* Benzy changes */
                     PNRReply gdsPNRReplyBenzy = null;
                     FarePricePNRWithBookingClassReply pricePNRReplyBenzy = null;
@@ -708,18 +710,24 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
 
 
                     }
-                    int numberOfTst = (travellerMasterInfo.isSeamen()) ? 1 : getNumberOfTST(travellerMasterInfo.getTravellersList());
+                    int numberOfTst = (travellerMasterInfo.getItinerary().getJourneyList().get(0).isSeamen()) ? 1 : getNumberOfTST(travellerMasterInfo.getTravellersList());
+
+                    //int numberOfTst = getNumberOfTST(travellerMasterInfo.getTravellersList());
+                    System.out.println("numberOfTst----------  "+numberOfTst);
 
                     logger.debug(" gdsPNRReply " + Json.toJson(gdsPNRReply));
                     if (pnrResponse.isOfficeIdPricingError() || isDelIdSeamen) {
                         System.out.println("Office Id Pricing Error");
                         gdsPNRReply = serviceHandler.savePNR(amadeusSessionWrapper);
                         String tstRefNo = getPNRNoFromResponse(gdsPNRReply);
+                        System.out.println("sim 1");
+                        boolean isSplitPricing = false;
                         if (isSimultaneousPNR(gdsPNRReply)) {
                             System.out.println("SIMULTANEOUS CHANGES TO PNR - USE WRA/RT TO PRINT OR IGNORE");
                             logger.debug("SIMULTANEOUS CHANGES TO PNR - USE WRA/RT TO PRINT OR IGNORE");
                             createSimultaneousPNR(amadeusSessionWrapper, gdsPNRReply, tstRefNo, travellerMasterInfo, pnrResponse, officeId,
                                     pricePNRReply, benzyAmadeusSessionWrapper, i);
+                            isSplitPricing = true;
                         }
                         System.out.println(tstRefNo);
                         logger.debug("checkFareChangeAndAvailability called..........." + pnrResponse);
@@ -740,80 +748,82 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                             }
                         }
                         System.out.println("Session id not null "+amadeusSessionWrapper.getSessionId());
-                        gdsPNRReplyBenzy = serviceHandler.retrievePNR(tstRefNo, amadeusSessionWrapper);
-                        System.out.println("Benzy PNR Retrieved");
-                        //pnrResponse.setPnrNumber(tstRefNo);
-                        Boolean error = Boolean.FALSE;
-                        gdsPNRReply = serviceHandler.savePNRES(amadeusSessionWrapper, amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId());
-                        System.out.println("PNR Saved in Benzy Office");
-                        if (gdsPNRReply.getGeneralErrorInfo().size() > 0) {
-                            Thread.sleep(20000);
-                            error = Boolean.TRUE;
-                        }
-                        System.out.println("error in savePNRES: " + error);
+                        if(!isSplitPricing) {
+                            gdsPNRReplyBenzy = serviceHandler.retrievePNR(tstRefNo, amadeusSessionWrapper);
+                            System.out.println("Benzy PNR Retrieved");
+                            //pnrResponse.setPnrNumber(tstRefNo);
+                            Boolean error = Boolean.FALSE;
+                            gdsPNRReply = serviceHandler.savePNRES(amadeusSessionWrapper, amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId());
+                            System.out.println("PNR Saved in Benzy Office");
+                            if (gdsPNRReply.getGeneralErrorInfo().size() > 0) {
+                                Thread.sleep(20000);
+                                error = Boolean.TRUE;
+                            }
+                            System.out.println("error in savePNRES: " + error);
 
-                        if (!error) {
-                            benzyAmadeusSessionWrapper = serviceHandler.logIn(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId(), true);
-                            PNRReply pnrReply = serviceHandler.retrievePNR(tstRefNo, benzyAmadeusSessionWrapper);
-                            pricePNRReplyBenzy = checkPNRPricingForSplit(travellerMasterInfo, gdsPNRReplyBenzy, pricePNRReplyBenzy, pnrResponse, benzyAmadeusSessionWrapper,index);
-                            createTST(pnrResponse, benzyAmadeusSessionWrapper, numberOfTst);
-                            setLastTicketingDate(pricePNRReplyBenzy, pnrResponse, travellerMasterInfo);
-                            gdsPNRReplyBenzy = serviceHandler.savePNR(benzyAmadeusSessionWrapper);
+                            if (!error) {
+                                benzyAmadeusSessionWrapper = serviceHandler.logIn(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId(), true);
+                                PNRReply pnrReply = serviceHandler.retrievePNR(tstRefNo, benzyAmadeusSessionWrapper);
+                                pricePNRReplyBenzy = checkPNRPricingForSplit(travellerMasterInfo, gdsPNRReplyBenzy, pricePNRReplyBenzy, pnrResponse, benzyAmadeusSessionWrapper, index);
+                                createTST(pnrResponse, benzyAmadeusSessionWrapper, numberOfTst);
+                                setLastTicketingDate(pricePNRReplyBenzy, pnrResponse, travellerMasterInfo);
+                                gdsPNRReplyBenzy = serviceHandler.savePNR(benzyAmadeusSessionWrapper);
 
-                            if (gdsPNRReplyBenzy.getGeneralErrorInfo().size() > 0) {
-                                List<PNRReply.GeneralErrorInfo> generalErrorInfos = gdsPNRReplyBenzy.getGeneralErrorInfo();
-                                for (PNRReply.GeneralErrorInfo generalErrorInfo : generalErrorInfos) {
-                                    String textMsg = generalErrorInfo.getMessageErrorText().getText().get(0).trim();
-                                    if (textMsg.equals("SIMULTANEOUS CHANGES TO PNR - USE WRA/RT TO PRINT OR IGNORE")) {
-                                        error = Boolean.TRUE;
+                                if (gdsPNRReplyBenzy.getGeneralErrorInfo().size() > 0) {
+                                    List<PNRReply.GeneralErrorInfo> generalErrorInfos = gdsPNRReplyBenzy.getGeneralErrorInfo();
+                                    for (PNRReply.GeneralErrorInfo generalErrorInfo : generalErrorInfos) {
+                                        String textMsg = generalErrorInfo.getMessageErrorText().getText().get(0).trim();
+                                        if (textMsg.equals("SIMULTANEOUS CHANGES TO PNR - USE WRA/RT TO PRINT OR IGNORE")) {
+                                            error = Boolean.TRUE;
+                                        }
                                     }
                                 }
                             }
-                        }
-                        if (error) {
-                            PNRCancel pnrCancel = new PNRAddMultiElementsh().exitEsx(tstRefNo);
-                            serviceHandler.exitESPnr(pnrCancel, amadeusSessionWrapper);
-                            serviceHandler.logOut(benzyAmadeusSessionWrapper);
-                            gdsPNRReply = serviceHandler.savePNRES(amadeusSessionWrapper, amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId());
-                            benzyAmadeusSessionWrapper = serviceHandler.logIn(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId(), true);
-                            try {
-                                serviceHandler.retrievePNR(tstRefNo, benzyAmadeusSessionWrapper);
-                            } catch (Exception ex) {
-                                ex.printStackTrace();
-                                if (ex != null && ex.getMessage() != null && ex.getMessage().toString().contains("IGNORE")) {
-                                    gdsPNRReply = serviceHandler.ignoreAndRetrievePNR(benzyAmadeusSessionWrapper);
+                            if (error) {
+                                PNRCancel pnrCancel = new PNRAddMultiElementsh().exitEsx(tstRefNo);
+                                serviceHandler.exitESPnr(pnrCancel, amadeusSessionWrapper);
+                                serviceHandler.logOut(benzyAmadeusSessionWrapper);
+                                gdsPNRReply = serviceHandler.savePNRES(amadeusSessionWrapper, amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId());
+                                benzyAmadeusSessionWrapper = serviceHandler.logIn(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId(), true);
+                                try {
+                                    serviceHandler.retrievePNR(tstRefNo, benzyAmadeusSessionWrapper);
+                                } catch (Exception ex) {
+                                    ex.printStackTrace();
+                                    if (ex != null && ex.getMessage() != null && ex.getMessage().toString().contains("IGNORE")) {
+                                        gdsPNRReply = serviceHandler.ignoreAndRetrievePNR(benzyAmadeusSessionWrapper);
+                                    }
                                 }
+                                //serviceHandler.retrivePNR(tstRefNo,benzyAmadeusSessionWrapper);
+                                pricePNRReplyBenzy = checkPNRPricingForSplit(travellerMasterInfo, gdsPNRReplyBenzy, pricePNRReplyBenzy, pnrResponse, benzyAmadeusSessionWrapper, index);
+                                createTST(pnrResponse, benzyAmadeusSessionWrapper, numberOfTst);
+                                setLastTicketingDate(pricePNRReplyBenzy, pnrResponse, travellerMasterInfo);
+                                gdsPNRReplyBenzy = serviceHandler.savePNR(benzyAmadeusSessionWrapper);
                             }
-                            //serviceHandler.retrivePNR(tstRefNo,benzyAmadeusSessionWrapper);
-                            pricePNRReplyBenzy = checkPNRPricingForSplit(travellerMasterInfo, gdsPNRReplyBenzy, pricePNRReplyBenzy, pnrResponse, benzyAmadeusSessionWrapper,index);
-                            createTST(pnrResponse, benzyAmadeusSessionWrapper, numberOfTst);
-                            setLastTicketingDate(pricePNRReplyBenzy, pnrResponse, travellerMasterInfo);
-                            gdsPNRReplyBenzy = serviceHandler.savePNR(benzyAmadeusSessionWrapper);
-                        }
-                        if (pnrResponse.getPricingInfo() != null)
-                            pnrResponse.getPricingInfo().setPricingOfficeId(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId().toString());
-                        FareCheckRulesReply fareCheckRulesReply = serviceHandler.getFareRules(benzyAmadeusSessionWrapper);
-                        Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap;
-                        try {
-                            if (pricePNRReply.getApplicationError() == null && travellerMasterInfo.getAdditionalInfo() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking() == null) {
-                                Map<String, String> fareComponentsMap = AmadeusBookingHelper.getFareComponentMapFromPricePNRWithBookingClass(pricePNRReplyBenzy,newFareJourneyList);
-                                fareCheckRulesResponseMap = amadeusBookingHelper.getFareRuleTxtMapFromPricingAndFc(benzyAmadeusSessionWrapper, fareComponentsMap);
-                                pnrResponse.setFareCheckRulesResponseMap(fareCheckRulesResponseMap);
+                            if (pnrResponse.getPricingInfo() != null)
+                                pnrResponse.getPricingInfo().setPricingOfficeId(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId().toString());
+                            FareCheckRulesReply fareCheckRulesReply = serviceHandler.getFareRules(benzyAmadeusSessionWrapper);
+                            Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap;
+                            try {
+                                if (pricePNRReply.getApplicationError() == null && travellerMasterInfo.getAdditionalInfo() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking() == null) {
+                                    Map<String, String> fareComponentsMap = AmadeusBookingHelper.getFareComponentMapFromPricePNRWithBookingClass(pricePNRReplyBenzy, newFareJourneyList);
+                                    fareCheckRulesResponseMap = amadeusBookingHelper.getFareRuleTxtMapFromPricingAndFc(benzyAmadeusSessionWrapper, fareComponentsMap);
+                                    pnrResponse.setFareCheckRulesResponseMap(fareCheckRulesResponseMap);
 
+                                }
+                                Map<String, Map> benzyFareRulesMap = null;
+                                if (fareCheckRulesReply.getErrorInfo() == null)
+                                    benzyFareRulesMap = AmadeusHelper.getFareCheckRules(fareCheckRulesReply);
+
+                                pnrResponse.setBenzyFareRuleMap(benzyFareRulesMap);
+                                PNRCancel pnrCancel = new PNRAddMultiElementsh().exitEsx(tstRefNo);
+                                serviceHandler.exitESPnr(pnrCancel, amadeusSessionWrapper);
+                                serviceHandler.savePNR(amadeusSessionWrapper);
+                                if (pnrResponse.getErrorMessage() == null)
+                                    pnrResponse.setPnrNumber(tstRefNo);
+                                Thread.sleep(10000);
+                            } catch (Exception e) {
+                                throw new Exception();
                             }
-                            Map<String, Map> benzyFareRulesMap = null;
-                            if (fareCheckRulesReply.getErrorInfo() == null)
-                                benzyFareRulesMap = AmadeusHelper.getFareCheckRules(fareCheckRulesReply);
-
-                            pnrResponse.setBenzyFareRuleMap(benzyFareRulesMap);
-                            PNRCancel pnrCancel = new PNRAddMultiElementsh().exitEsx(tstRefNo);
-                            serviceHandler.exitESPnr(pnrCancel, amadeusSessionWrapper);
-                            serviceHandler.savePNR(amadeusSessionWrapper);
-                            if (pnrResponse.getErrorMessage() == null)
-                                pnrResponse.setPnrNumber(tstRefNo);
-                            Thread.sleep(10000);
-                        } catch (Exception e) {
-                            throw new Exception();
                         }
                     } else {
                         System.out.println("Normal Office Id");
@@ -866,7 +876,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                         } else {
                             System.out.println("Non Benzy Office Id - Fetching Generic Fare Rule");
                             Map<String, String> pnrMap = new HashMap<>();
-                            createSplitTST(pnrResponse, amadeusSessionWrapper, 1);
+                            createSplitTST(pnrResponse, amadeusSessionWrapper, numberOfTst);
                             if (!pnrResponse.isFlightAvailable()) {
                                 return pnrResponse;
                             }
@@ -892,7 +902,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                                         return pnrResponse;
                                     }
                                 }
-
+System.out.println("sim 2");
                                 if (isSimultaneousPNR(gdsPNRReply)) {
                                     System.out.println("SIMULTANEOUS CHANGES TO PNR - USE WRA/RT TO PRINT OR IGNORE");
                                     logger.debug("SIMULTANEOUS CHANGES TO PNR - USE WRA/RT TO PRINT OR IGNORE");
@@ -917,13 +927,20 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                     return pnrResponse;
                 }
                 pnrResponses.add(pnrResponse);
-                if (isFirstSegmentSell) {
+                if (isFirstSegmentSell && !pnrResponses.isEmpty()) {
                     PNRResponse pnrResponse1 = pnrResponses.get(0);
                     Map<String, String> stringStringMap = pnrResponse.getSegmentBaggageMap();
                     Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap = pnrResponse.getFareCheckRulesResponseMap();
                     System.out.println("Segment Baggage Map :" + stringStringMap);
-                    stringStringMap.putAll(pnrResponse1.getSegmentBaggageMap());
-                    fareCheckRulesResponseMap.putAll(pnrResponse1.getFareCheckRulesResponseMap());
+                    
+                    // Add null checks to prevent NullPointerException
+                    if (stringStringMap != null && pnrResponse1.getSegmentBaggageMap() != null) {
+                        stringStringMap.putAll(pnrResponse1.getSegmentBaggageMap());
+                    }
+                    if (fareCheckRulesResponseMap != null && pnrResponse1.getFareCheckRulesResponseMap() != null) {
+                        fareCheckRulesResponseMap.putAll(pnrResponse1.getFareCheckRulesResponseMap());
+                    }
+                    
                     pnrResponse.setSegmentBaggageMap(stringStringMap);
                     pnrResponse.setFareCheckRulesResponseMap(fareCheckRulesResponseMap);
 
@@ -965,7 +982,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                 logger.debug(" createSimultaneousPNR gdsPNRReply " + Json.toJson(gdsPNRReply));
                 Map<String, String> pnrMap = new HashMap<>();
                 createSplitTST(pnrResponse, amadeusSessionWrapper, 1);
-
+                pnrResponse.setPriceChanged(false);
                 gdsPNRReply = serviceHandler.savePNR(amadeusSessionWrapper);
                 if (gdsPNRReply.getGeneralErrorInfo().size() != 0) {
 
@@ -1347,6 +1364,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
         boolean isSeaman = false;
         if(isSplitTicket) {
             isSeaman = travellerMasterInfo.getItinerary().getJourneyList().get(0).isSeamen();
+            System.out.println(" isSplitTicket true in checkPNRPricingForSplit "+isSeaman);
         }
         if (isSeaman) {
             int size = travellerMasterInfo.getItinerary().getJourneyList().get(0).getAirSegmentList().size();
@@ -1442,7 +1460,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
             }
             return pricePNRReply;
         }
-        AmadeusBookingHelper.checkFare(pricePNRReply, pnrResponse, travellerMasterInfo);
+        AmadeusBookingHelper.checkSplitTicketFare(pricePNRReply, pnrResponse, travellerMasterInfo);
         readBaggageInfoFromPnrReply(gdsPNRReply, pricePNRReply, pnrResponse);
 //        AmadeusBookingHelper.setTaxBreakup(pnrResponse, travellerMasterInfo, pricePNRReply);
         return pricePNRReply;

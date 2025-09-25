@@ -52,7 +52,7 @@ public class IndigoFlightSearch implements FlightSearch {
                 if (response.isSuccessful()) {
                     String responseBody = response.body().string();
                     SearchResponse searchResponse = objectMapper.readValue(responseBody, SearchResponse.class);
-                    indigoLogger.debug("Indigo Flight Search Response: " + responseBody);
+                    logger.debug("Indigo Flight Search Response: " + responseBody);
                     searchResponse.setFlightSearchOffice(office);
                     searchResponse.setProvider("Indigo");
                     return searchResponse;

@@ -31,7 +31,7 @@ public class PricePNR {
         String airlineStr = play.Play.application().configuration().getString("vistara.airline.code");
         if(isSplitTicket) {
             isSeamen = flightItinerary.getJourneyList().get(journeyIndex).isSeamen();
-            System.out.println("isSeamen "+isSeamen);
+            System.out.println("isSeamen getPNRPricingOption ------------ "+isSeamen);
         }
 //        if(isSegmentWisePricing){
 //            for(AirSegmentInformation airSegment : airSegmentList)  {

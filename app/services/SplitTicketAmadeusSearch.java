@@ -881,8 +881,11 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
         pricingInformation.setPricingOfficeId(configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey()));
         List<PassengerTax> passengerTaxes= new ArrayList<>();
         for(FareMasterPricerTravelBoardSearchReply.Recommendation.PaxFareProduct paxFareProduct : recommendation.getPaxFareProduct()) {
-            PassengerTax passengerTax = new PassengerTax();
+
             int paxCount = paxFareProduct.getPaxReference().get(0).getTraveller().size();
+            int adtCount = searchParameters.getAdultCount();
+            int chdCount = searchParameters.getChildCount();
+            int infCount = searchParameters.getInfantCount();
             String paxType = paxFareProduct.getPaxReference().get(0).getPtc().get(0);
             PricingTicketingSubsequentType144401S fareDetails = paxFareProduct.getPaxFareDetail();
             BigDecimal amount = fareDetails.getTotalFareAmount();
@@ -890,41 +893,62 @@ public class SplitTicketAmadeusSearch implements SplitTicketSearch{
             BigDecimal baseFare = amount.subtract(tax);
             if(paxType.equalsIgnoreCase("ADT") || paxType.equalsIgnoreCase("SEA")) {
 //        		pricingInformation.setAdtBasePrice(baseFare.multiply(new BigDecimal(paxCount)));
-                pricingInformation.setAdtBasePrice(baseFare);
-                pricingInformation.setAdtTotalPrice(amount);
-                passengerTax.setPassengerType("ADT");
-                passengerTax.setTotalTax(tax);
-                passengerTax.setPassengerCount(paxCount);
+                if (searchParameters.getAdultCount()>0 && isSeamen) {
+                    PassengerTax passengerTax = new PassengerTax();
+                    pricingInformation.setAdtBasePrice(baseFare);
+                    pricingInformation.setAdtTotalPrice(amount);
+                    passengerTax.setPassengerType("ADT");
+                    passengerTax.setTotalTax(tax);
+                    passengerTax.setPassengerCount(adtCount);
+                    passengerTaxes.add(passengerTax);
+                }
+                if (searchParameters.getAdultCount()>0 && !isSeamen) {
+                    PassengerTax passengerTax = new PassengerTax();
+                    pricingInformation.setAdtBasePrice(baseFare);
+                    pricingInformation.setAdtTotalPrice(amount);
+                    passengerTax.setPassengerType("ADT");
+                    passengerTax.setTotalTax(tax);
+                    passengerTax.setPassengerCount(adtCount);
+                    passengerTaxes.add(passengerTax);
+                }
                 if (searchParameters.getChildCount()>0 && isSeamen) {
+                    PassengerTax passengerTax = new PassengerTax();
                     pricingInformation.setChdBasePrice(baseFare);
                     pricingInformation.setChdTotalPrice(amount);
                     passengerTax.setPassengerType("CHD");
                     passengerTax.setTotalTax(tax);
-                    passengerTax.setPassengerCount(paxCount);
+                    passengerTax.setPassengerCount(chdCount);
+                    passengerTaxes.add(passengerTax);
                 }
                 if (searchParameters.getInfantCount()>0 && isSeamen) {
+                    PassengerTax passengerTax = new PassengerTax();
                     pricingInformation.setInfBasePrice(baseFare);
                     pricingInformation.setInfTotalPrice(amount);
                     passengerTax.setPassengerType("INF");
                     passengerTax.setTotalTax(tax);
-                    passengerTax.setPassengerCount(paxCount);
+                    passengerTax.setPassengerCount(infCount);
+                    passengerTaxes.add(passengerTax);
                 }
             } else if(paxType.equalsIgnoreCase("CHD")) {
+                PassengerTax passengerTax = new PassengerTax();
 //				pricingInformation.setChdBasePrice(baseFare.multiply(new BigDecimal(paxCount)));
                 pricingInformation.setChdBasePrice(baseFare);
                 pricingInformation.setChdTotalPrice(amount);
                 passengerTax.setPassengerType("CHD");
                 passengerTax.setTotalTax(tax);
-                passengerTax.setPassengerCount(paxCount);
+                passengerTax.setPassengerCount(chdCount);
+                passengerTaxes.add(passengerTax);
             } else if(paxType.equalsIgnoreCase("INF")) {
+                PassengerTax passengerTax = new PassengerTax();
 //				pricingInformation.setInfBasePrice(baseFare.multiply(new BigDecimal(paxCount)));
                 pricingInformation.setInfBasePrice(baseFare);
                 pricingInformation.setInfTotalPrice(amount);
                 passengerTax.setPassengerType("INF");
                 passengerTax.setTotalTax(tax);
-                passengerTax.setPassengerCount(paxCount);
+                passengerTax.setPassengerCount(infCount);
+                passengerTaxes.add(passengerTax);
             }
-            passengerTaxes.add(passengerTax);
+            //passengerTaxes.add(passengerTax);
         }
         pricingInformation.setPassengerTaxes(passengerTaxes);
         if (!searchOfficeID.equalsIgnoreCase("BOMAK38SN")) {

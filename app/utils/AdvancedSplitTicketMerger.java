@@ -758,13 +758,104 @@ public class AdvancedSplitTicketMerger {
                 }
             }
             
+            // Aggregate passenger taxes from all journeys
+            List<PassengerTax> aggregatedPassengerTaxes = aggregatePassengerTaxes(splitPricing);
+            totalPricing.setPassengerTaxes(aggregatedPassengerTaxes);
+            
             mergedItinerary.setPricingInformation(totalPricing);
             
         } catch (Exception e) {
             logger.error("Error creating total pricing: " + e.getMessage());
         }
     }
-
+    
+    /**
+     * Groups all passengers by type (ADT, CHD) and creates one object per passenger type.
+     * Each passenger type gets a single object with combined taxes from all journeys.
+     */
+    private List<PassengerTax> aggregatePassengerTaxes(List<PricingInformation> splitPricing) {
+        List<PassengerTax> aggregatedTaxes = new ArrayList<>();
+        Map<String, PassengerTax> taxMap = new HashMap<>();
+        
+        try {
+            // Process each journey's pricing information
+            for (int journeyIndex = 0; journeyIndex < splitPricing.size(); journeyIndex++) {
+                PricingInformation pricing = splitPricing.get(journeyIndex);
+                
+                if (pricing != null && pricing.getPassengerTaxes() != null) {
+                    for (PassengerTax passengerTax : pricing.getPassengerTaxes()) {
+                        String passengerType = passengerTax.getPassengerType();
+                        
+                        if (taxMap.containsKey(passengerType)) {
+                            // Update existing tax entry for this passenger type
+                            PassengerTax existingTax = taxMap.get(passengerType);
+                            
+                            // Add to total tax
+                            if (existingTax.getTotalTax() != null && passengerTax.getTotalTax() != null) {
+                                existingTax.setTotalTax(existingTax.getTotalTax().add(passengerTax.getTotalTax()));
+                            }
+                            
+                            // Add to journey-specific taxes
+                            if (journeyIndex == 0) {
+                                // First journey - add to onward tax
+                                if (existingTax.getOnwardTax() != null && passengerTax.getTotalTax() != null) {
+                                    existingTax.setOnwardTax(existingTax.getOnwardTax().add(passengerTax.getTotalTax()));
+                                } else if (passengerTax.getTotalTax() != null) {
+                                    existingTax.setOnwardTax(passengerTax.getTotalTax());
+                                }
+                            } else {
+                                // Second journey - add to return tax
+                                if (existingTax.getReturnTax() != null && passengerTax.getTotalTax() != null) {
+                                    existingTax.setReturnTax(existingTax.getReturnTax().add(passengerTax.getTotalTax()));
+                                } else if (passengerTax.getTotalTax() != null) {
+                                    existingTax.setReturnTax(passengerTax.getTotalTax());
+                                }
+                            }
+                            
+                        } else {
+                            // Create new tax entry for this passenger type
+                            PassengerTax newTax = new PassengerTax();
+                            newTax.setPassengerType(passengerTax.getPassengerType());
+                            newTax.setPassengerCount(passengerTax.getPassengerCount());
+                            newTax.setTotalTax(passengerTax.getTotalTax());
+                            
+                            // Set journey-specific tax fields
+                            if (journeyIndex == 0) {
+                                // First journey - onward tax
+                                newTax.setOnwardTax(passengerTax.getTotalTax());
+                                newTax.setReturnTax(null);
+                            } else {
+                                // Second journey - return tax
+                                newTax.setOnwardTax(null);
+                                newTax.setReturnTax(passengerTax.getTotalTax());
+                            }
+                            
+                            taxMap.put(passengerType, newTax);
+                        }
+                    }
+                }
+            }
+            
+            // Convert map to list
+            aggregatedTaxes.addAll(taxMap.values());
+            
+            logger.debug("Created aggregated passenger taxes: {} objects (one per passenger type) from {} journeys", 
+                        aggregatedTaxes.size(), splitPricing.size());
+            
+            // Log details for each passenger type
+            for (PassengerTax tax : aggregatedTaxes) {
+                logger.debug("PassengerType: {}, Count: {}, TotalTax: {}, OnwardTax: {}, ReturnTax: {}", 
+                           tax.getPassengerType(), tax.getPassengerCount(), tax.getTotalTax(), 
+                           tax.getOnwardTax(), tax.getReturnTax());
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error creating aggregated passenger taxes: " + e.getMessage());
+        }
+        
+        return aggregatedTaxes;
+    }
+    
     private int getTotalStops(FlightItinerary flightItinerary) {
         if (flightItinerary.getJourneyList() == null || flightItinerary.getJourneyList().isEmpty()) {
             return 0;

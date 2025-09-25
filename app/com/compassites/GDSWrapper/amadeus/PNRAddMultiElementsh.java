@@ -35,10 +35,10 @@ public class PNRAddMultiElementsh {
         OptionalPNRActionsType pnrActions = new OptionalPNRActionsType();
         pnrActions.getOptionCode().add(new BigInteger("0"));
         element.setPnrActions(pnrActions);
-
         addLiveEntry(element, travellerMasterInfo);
-
+System.out.println("**********getMultiElements**********"+travellerMasterInfo.getItinerary().getJourneyList().get(0).isSeamen());
         if (travellerMasterInfo.getAdditionalInfo() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking() == null) {
+            System.out.println("teststs");
             element.getTravellerInfo().addAll(getPassengersList(travellerMasterInfo));
         }
         PNRAddMultiElements.DataElementsMaster dem = new PNRAddMultiElements.DataElementsMaster();
@@ -167,7 +167,11 @@ public class PNRAddMultiElementsh {
         List<PNRAddMultiElements.TravellerInfo> travellerInfoList = new ArrayList<>();
         boolean isSeamen = travellerMasterInfo.isSeamen();
         boolean isSplitTicket = travellerMasterInfo.getItinerary().isSplitTicket();
-
+        System.out.println("isSplitTicket  ------- "+isSplitTicket);
+        if (isSplitTicket) {
+            isSeamen = travellerMasterInfo.getItinerary().getJourneyList().get(0).isSeamen();
+            System.out.println("isSeamen  ------- "+isSeamen);
+        }
         List<Traveller> travellers = new ArrayList<>();
         travellers.addAll(travellerMasterInfo.getTravellersList()); //copying travellers as the list would be modified
         List<Traveller> infantTravellerList = new ArrayList<>();

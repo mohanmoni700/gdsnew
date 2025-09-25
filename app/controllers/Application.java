@@ -225,6 +225,7 @@ public class Application {
     public Result checkFareChangeAndAvailabilityForSplitTicket() throws IOException {
         JsonNode json = request().body().asJson();
         logger.debug("----------------- checkSplitTicketFareAvailability Request: " + json);
+        System.out.println("Split ticket checkSplitTicketFareAvailability called ");
         ObjectMapper mapper = new ObjectMapper();
         List<TravellerMasterInfo> travellerMasterInfos = mapper.readValue(
                 json.toString(),

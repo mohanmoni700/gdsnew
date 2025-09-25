@@ -269,6 +269,20 @@ public class ServiceHandler {
         return pnrReply;
     }
 
+    public PNRReply addTravellerInfoToPNRForSplit(TravellerMasterInfo travellerMasterInfo, AmadeusSessionWrapper amadeusSessionWrapper) {
+
+        amadeusSessionWrapper.incrementSequenceNumber(amadeusSessionWrapper, bindingProvider);
+        logger.debug("Amadeus Add Traveller Infor to PNR called   at {}....................Session Id: {}", new Date(), amadeusSessionWrapper.getSessionId());
+
+        PNRAddMultiElements pnrAddMultiElements = new PNRAddMultiElementsh().getMultiElements(travellerMasterInfo);
+        amadeusLogger.debug("PNRAddMultiElements Request -- Add Traveller to PNR {} SessionId: {} ---->\n{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(pnrAddMultiElements));
+
+        PNRReply pnrReply = mPortType.pnrAddMultiElements(pnrAddMultiElements, amadeusSessionWrapper.getmSession(), amadeusSessionWrapper.getTransactionFlowLinkTypeHolder(), amadeusSessionWrapper.getAmaSecurityHostedUser());
+        amadeusLogger.debug("PNRReply -- Add Traveller to PNR {} SessionId: {} ---->\n{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(pnrReply));
+
+        return pnrReply;
+    }
+
     //This method is used to Price the PNR
     public FarePricePNRWithBookingClassReply pricePNR(String carrrierCode, PNRReply pnrReply, boolean isSeamen, boolean isDomesticFlight, FlightItinerary flightItinerary, List<AirSegmentInformation> airSegmentList, boolean isSegmentWisePricing, AmadeusSessionWrapper amadeusSessionWrapper, boolean isAddBooking) {
 
