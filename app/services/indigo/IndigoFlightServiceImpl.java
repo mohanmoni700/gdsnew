@@ -15,6 +15,7 @@ import play.libs.Json;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class IndigoFlightServiceImpl implements IndigoFlightService {
@@ -23,7 +24,11 @@ public class IndigoFlightServiceImpl implements IndigoFlightService {
 
     static Logger indigoLogger = LoggerFactory.getLogger("indigo");
 
-    private static final OkHttpClient client = new OkHttpClient();
+    private static final OkHttpClient client = new OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build();
     private static final String endPoint = Play.application().configuration().getString("indigo.service.endPoint");
 
     @Override

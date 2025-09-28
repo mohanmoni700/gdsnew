@@ -226,6 +226,7 @@ public class AmadeusIssuanceServiceImpl {
                     if (travellerMasterInfo.getAdditionalInfo() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking()) {
                         isAddBooking = true;
                     }
+                    System.out.println("if 1");
                     //isSegmentWisePricing ==TRUE
                     pricePNRReply = serviceHandler.priceSplitTicketPNR(carrierCode, gdsPNRReply,
                             issuanceRequest.isSeamen(), isDomestic, issuanceRequest.getFlightItinerary(), airSegment, isSegmentWisePricing, amadeusSessionWrapper, isAddBooking,journeyIndex);
@@ -332,6 +333,7 @@ public class AmadeusIssuanceServiceImpl {
                 if (travellerMasterInfo.getAdditionalInfo() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking()) {
                     isAddBooking = true;
                 }
+                System.out.println("else 1");
                 pricePNRReply = serviceHandler.pricePNR(validatingCarrierCode, gdsPNRReply, issuanceRequest.isSeamen(), isDomestic, issuanceRequest.getFlightItinerary(), airSegmentList, isSegmentWisePricing, amadeusSessionWrapper, isAddBooking);
 
 
@@ -371,6 +373,7 @@ public class AmadeusIssuanceServiceImpl {
                     if (travellerMasterInfo.getAdditionalInfo() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking()) {
                         isAddBooking = true;
                     }
+                    System.out.println("else 2");
                     pricePNRReply = serviceHandler.pricePNR(validatingCarrierCode, gdsPNRReply, issuanceRequest.isSeamen(), isDomestic, issuanceRequest.getFlightItinerary(), airSegmentList, isSegmentWisePricing, benzyAmadeusSessionWrapper, isAddBooking);
 
                     try {

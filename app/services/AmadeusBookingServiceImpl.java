@@ -1070,11 +1070,23 @@ public class AmadeusBookingServiceImpl implements BookingService {
         pricePNRReply = serviceHandler.pricePNR(carrierCode, gdsPNRReply, travellerMasterInfo.isSeamen(), isDomestic, travellerMasterInfo.getItinerary(), airSegmentList, isSegmentWisePricing, amadeusSessionWrapper, isAddBooking);
 
         if (pricePNRReply.getApplicationError() != null) {
-            if (pricePNRReply.getApplicationError().getErrorOrWarningCodeDetails().getErrorDetails().getErrorCode().equalsIgnoreCase("0")
-                    && pricePNRReply.getApplicationError().getErrorOrWarningCodeDetails().getErrorDetails().getErrorCategory().equalsIgnoreCase("EC")) {
-                pnrResponse.setOfficeIdPricingError(true);
-            } else {
-                pnrResponse.setFlightAvailable(false);
+            String errorCode = pricePNRReply.getApplicationError().getErrorOrWarningCodeDetails().getErrorDetails().getErrorCode();
+            String errorCategory = pricePNRReply.getApplicationError().getErrorOrWarningCodeDetails().getErrorDetails().getErrorCategory();
+
+//          Handled OfficeIdPricingError for addBooking
+            if(isAddBooking){
+                if ((errorCode.equalsIgnoreCase("0") && errorCategory.equalsIgnoreCase("EC")) ||(errorCode.equalsIgnoreCase("911") && errorCategory.equalsIgnoreCase("EC"))){
+                    pnrResponse.setOfficeIdPricingError(true);
+                } else {
+                    pnrResponse.setFlightAvailable(false);
+                }
+
+            }else{
+                if (errorCode.equalsIgnoreCase("0") && errorCategory.equalsIgnoreCase("EC")) {
+                    pnrResponse.setOfficeIdPricingError(true);
+                } else {
+                    pnrResponse.setFlightAvailable(false);
+                }
             }
             return pricePNRReply;
         }
@@ -1374,9 +1386,12 @@ public class AmadeusBookingServiceImpl implements BookingService {
                 if (pnrResponse.isOfficeIdPricingError() || isDelIdSeamen || pnrResponse.isChangedPriceHigh()) {
                     if (travellerMasterInfo.getAdditionalInfo() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking()) {
                         if (pricePNRReply.getApplicationError() != null) {
-                            pnrResponse.setFlightAvailable(false);
+
+//                          If isOfficeIdPricingError, do not return pnrResponse immediately; instead, try` for ES entry for addBooking
+
+//                          pnrResponse.setFlightAvailable(false);
                             pnrResponse.setPriceChanged(false);
-                            return pnrResponse;
+//                          return pnrResponse;
                         }
                     }
                     gdsPNRReply = serviceHandler.savePNR(amadeusSessionWrapper);
@@ -1517,13 +1532,15 @@ public class AmadeusBookingServiceImpl implements BookingService {
                             amadeusLogger.debug("An exception while fetching the genericfareRule:" + e.getMessage());
                         }
                     }
-                    if (travellerMasterInfo.getAdditionalInfo() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking()) {
-                        if (pricePNRReply.getApplicationError() != null) {
-                            pnrResponse.setFlightAvailable(false);
-                            pnrResponse.setPriceChanged(false);
-                            return pnrResponse;
-                        }
-                    }
+
+//             Commented out as it was incorrectly setting flightAvailable is false for AddBooking after ES entry even without a pricing error.
+//                    if (travellerMasterInfo.getAdditionalInfo() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking()) {
+//                        if (pricePNRReply.getApplicationError() != null) {
+//                            pnrResponse.setFlightAvailable(false);
+//                            pnrResponse.setPriceChanged(false);
+//                            return pnrResponse;
+//                        }
+//                    }
 
                 }
                 return pnrResponse;

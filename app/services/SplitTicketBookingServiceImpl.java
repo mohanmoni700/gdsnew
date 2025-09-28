@@ -454,6 +454,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
 
 
             tstRefNo = travellerMasterInfo.getGdsPNR();
+            System.out.println("TST " + tstRefNo);
 
             try {
                 gdsPNRReply = serviceHandler.retrievePNR(tstRefNo, amadeusSessionWrapper);
@@ -726,7 +727,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                             System.out.println("SIMULTANEOUS CHANGES TO PNR - USE WRA/RT TO PRINT OR IGNORE");
                             logger.debug("SIMULTANEOUS CHANGES TO PNR - USE WRA/RT TO PRINT OR IGNORE");
                             createSimultaneousPNR(amadeusSessionWrapper, gdsPNRReply, tstRefNo, travellerMasterInfo, pnrResponse, officeId,
-                                    pricePNRReply, benzyAmadeusSessionWrapper, i);
+                                    pricePNRReply, benzyAmadeusSessionWrapper, i, index);
                             isSplitPricing = true;
                         }
                         System.out.println(tstRefNo);
@@ -907,7 +908,7 @@ System.out.println("sim 2");
                                     System.out.println("SIMULTANEOUS CHANGES TO PNR - USE WRA/RT TO PRINT OR IGNORE");
                                     logger.debug("SIMULTANEOUS CHANGES TO PNR - USE WRA/RT TO PRINT OR IGNORE");
                                     createSimultaneousPNR(amadeusSessionWrapper, gdsPNRReply, pnr, travellerMasterInfo, pnrResponse, officeId,
-                                            pricePNRReply, benzyAmadeusSessionWrapper, i);
+                                            pricePNRReply, benzyAmadeusSessionWrapper, i, index);
                                 }
                                 System.out.println("general infor error " + gdsPNRReply.getGeneralErrorInfo().size());
                                 logger.debug("general infor error " + gdsPNRReply.getGeneralErrorInfo().size());
@@ -932,14 +933,15 @@ System.out.println("sim 2");
                     Map<String, String> stringStringMap = pnrResponse.getSegmentBaggageMap();
                     Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap = pnrResponse.getFareCheckRulesResponseMap();
                     System.out.println("Segment Baggage Map :" + stringStringMap);
-                    
-                    // Add null checks to prevent NullPointerException
+                    stringStringMap.putAll(pnrResponse1.getSegmentBaggageMap());
+                    fareCheckRulesResponseMap.putAll(pnrResponse1.getFareCheckRulesResponseMap());
+                    /*// Add null checks to prevent NullPointerException
                     if (stringStringMap != null && pnrResponse1.getSegmentBaggageMap() != null) {
                         stringStringMap.putAll(pnrResponse1.getSegmentBaggageMap());
                     }
                     if (fareCheckRulesResponseMap != null && pnrResponse1.getFareCheckRulesResponseMap() != null) {
                         fareCheckRulesResponseMap.putAll(pnrResponse1.getFareCheckRulesResponseMap());
-                    }
+                    }*/
                     
                     pnrResponse.setSegmentBaggageMap(stringStringMap);
                     pnrResponse.setFareCheckRulesResponseMap(fareCheckRulesResponseMap);
@@ -965,7 +967,7 @@ System.out.println("sim 2");
     }
 
     public void createSimultaneousPNR(AmadeusSessionWrapper amadeusSessionWrapper, PNRReply gdsPNRReply, String pnr, TravellerMasterInfo travellerMasterInfo, PNRResponse pnrResponse, String officeId,
-                                      FarePricePNRWithBookingClassReply pricePNRReply, AmadeusSessionWrapper benzyAmadeusSessionWrapper, int count) {
+                                      FarePricePNRWithBookingClassReply pricePNRReply, AmadeusSessionWrapper benzyAmadeusSessionWrapper, int count, int index) {
         try {
             amadeusSessionWrapper = serviceHandler.logIn(officeId, true);
             gdsPNRReply = serviceHandler.retrievePNR(pnr, amadeusSessionWrapper);
@@ -978,7 +980,17 @@ System.out.println("sim 2");
                 PNRReply gdsPNRReplyBenzy = null;
                 FarePricePNRWithBookingClassReply pricePNRReplyBenzy = null;
                 travellerMasterInfo.getItinerary().getPricingInformation().setSegmentWisePricing(true);
-                pricePNRReply = checkPNRPricing(travellerMasterInfo, gdsPNRReply, pricePNRReply, pnrResponse, amadeusSessionWrapper);
+                pricePNRReply = checkPNRPricingForSplit(travellerMasterInfo, gdsPNRReply, pricePNRReply, pnrResponse, amadeusSessionWrapper,index);
+                if (pricePNRReply.getApplicationError() == null && travellerMasterInfo.getAdditionalInfo() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking() == null) {
+
+                    Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap;
+
+                    Map<String, String> fareComponentsMap = AmadeusBookingHelper.getFareComponentMapFromPricePNRWithBookingClass(pricePNRReply,travellerMasterInfo.getItinerary().getJourneyList());
+                    fareCheckRulesResponseMap = amadeusBookingHelper.getFareRuleTxtMapFromPricingAndFc(amadeusSessionWrapper, fareComponentsMap);
+                    pnrResponse.setFareCheckRulesResponseMap(fareCheckRulesResponseMap);
+
+
+                }
                 logger.debug(" createSimultaneousPNR gdsPNRReply " + Json.toJson(gdsPNRReply));
                 Map<String, String> pnrMap = new HashMap<>();
                 createSplitTST(pnrResponse, amadeusSessionWrapper, 1);
@@ -1000,9 +1012,9 @@ System.out.println("sim 2");
             } else {
                 setLastTicketingDate(pricePNRReply, pnrResponse, travellerMasterInfo);
                 String benzyOfficeId = amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId().toString();
-                if (travellerMasterInfo.getSearchSelectOfficeId().equalsIgnoreCase(benzyOfficeId)) {
+                if (travellerMasterInfo.getSearchSelectOfficeId().equalsIgnoreCase(benzyOfficeId) && pnrResponse.isFlightAvailable() ) {
+                    System.out.println("Flight available in benzy office - Fetching Generic Fare Rule");
                     boolean seamen = travellerMasterInfo.isSeamen();
-                    List<HashMap> miniRule = new ArrayList<>();
                     FlightItinerary flightItinerary = travellerMasterInfo.getItinerary();
                     try {
                         AmadeusSessionWrapper benzyamadeusSessionWrapper = serviceHandler.logIn(benzyOfficeId, true);
@@ -1039,16 +1051,23 @@ System.out.println("sim 2");
                         amadeusLogger.debug("An exception while fetching the genericfareRule:" + e.getMessage());
                     }
                 } else {
-                    Map<String, String> pnrMap = new HashMap<>();
-                    createSplitTST(pnrResponse, amadeusSessionWrapper, 1);
+                    if(!pnrResponse.isFlightAvailable()) {
+                        pnrResponse.setFlightAvailable(false);
+                        pnrResponse.setPriceChanged(false);
+                        System.out.println("flight not available in simultaneous PNR");
+                    } else {
+                        System.out.println("Flight available in non benzy office");
+                        Map<String, String> pnrMap = new HashMap<>();
+                        createSplitTST(pnrResponse, amadeusSessionWrapper, 1);
 
-                    gdsPNRReply = serviceHandler.savePNR(amadeusSessionWrapper);
+                        gdsPNRReply = serviceHandler.savePNR(amadeusSessionWrapper);
 
-                    String tstRefNo = getPNRNoFromResponse(gdsPNRReply);
-                    String segmentKey = createSegmentKey(travellerMasterInfo);
-                    pnrMap.put(segmentKey, tstRefNo);
-                    pnrResponse.setPnrMap(pnrMap);
-                    pnrResponse.setPnrNumber(tstRefNo);
+                        String tstRefNo = getPNRNoFromResponse(gdsPNRReply);
+                        String segmentKey = createSegmentKey(travellerMasterInfo);
+                        pnrMap.put(segmentKey, tstRefNo);
+                        pnrResponse.setPnrMap(pnrMap);
+                        pnrResponse.setPnrNumber(tstRefNo);
+                    }
                 }
             }
         } catch (Exception e) {

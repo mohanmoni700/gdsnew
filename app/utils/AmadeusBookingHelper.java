@@ -183,6 +183,7 @@ public class AmadeusBookingHelper {
         } else {
             searchPrice = travellerMasterInfo.getItinerary().getPricingInformation().getTotalPriceValue();
         }
+        searchPrice = travellerMasterInfo.getItinerary().getSplitPricingInformationList().get(index).getTotalPriceValue();
         if (travellerMasterInfo.getItinerary().isSplitTicket()) {
             //List<PricingInformation> splitPricingInformationList = travellerMasterInfo.getItinerary().getSplitPricingInformationList();
             PricingInformation splitPricing = travellerMasterInfo.getItinerary().getPricingInformation();
@@ -250,6 +251,8 @@ public class AmadeusBookingHelper {
         } else {
             searchPrice = travellerMasterInfo.getItinerary().getPricingInformation().getTotalPriceValue();
         }
+        System.out.println("Search Price : " + searchPrice + " Total Fare : " + totalFare);
+
         if (totalFare.compareTo(searchPrice) > 0) {
             System.out.println("Changed price is high");
             pnrResponse.setPriceChanged(false);
