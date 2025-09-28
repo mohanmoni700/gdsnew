@@ -22,4 +22,3 @@ public interface AncillaryService {
     Map<String, List<AncillaryBookingResponse>> getAncillaryBaggageConfirm(AncillaryBookingRequest ancillaryBookingRequest);
 
 }
-

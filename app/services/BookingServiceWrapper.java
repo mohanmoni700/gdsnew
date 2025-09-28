@@ -65,7 +65,7 @@ public class BookingServiceWrapper {
 		return amadeusLowestFareService;
 	}
 
-    @Autowired
+	@Autowired
 	public void setAmadeusLowestFareService(LowestFareService amadeusLowestFareService) {
 		this.amadeusLowestFareService = amadeusLowestFareService;
 	}
@@ -198,24 +198,24 @@ public class BookingServiceWrapper {
 	}
 
 	public TravellerMasterInfo getPnrDetails(IssuanceRequest issuanceRequest, String gdsPNR, String provider){
-    	TravellerMasterInfo masterInfo = null;
-    	if("Travelport".equalsIgnoreCase(provider)){
-    		masterInfo = travelPortBookingService.allPNRDetails(issuanceRequest, gdsPNR);
-    	} else if("Amadeus".equalsIgnoreCase(provider)){
-    		masterInfo = amadeusBookingService.allPNRDetails(issuanceRequest, gdsPNR);
-    	} else if(Mystifly.PROVIDER.equalsIgnoreCase(provider)){
-    		masterInfo = mystiflyBookingService.allPNRDetails(gdsPNR);
-    	}
-    	return masterInfo;
-    }
-	
+		TravellerMasterInfo masterInfo = null;
+		if("Travelport".equalsIgnoreCase(provider)){
+			masterInfo = travelPortBookingService.allPNRDetails(issuanceRequest, gdsPNR);
+		} else if("Amadeus".equalsIgnoreCase(provider)){
+			masterInfo = amadeusBookingService.allPNRDetails(issuanceRequest, gdsPNR);
+		} else if(Mystifly.PROVIDER.equalsIgnoreCase(provider)){
+			masterInfo = mystiflyBookingService.allPNRDetails(gdsPNR);
+		}
+		return masterInfo;
+	}
+
 	public JsonNode getBookingDetails(String provider, String gdsPNR) {
 		JsonNode json = null;
 		if("Travelport".equalsIgnoreCase(provider) || "Galileo".equalsIgnoreCase(provider)){
 			json = travelPortBookingService.getBookingDetails(gdsPNR);
-    	} else if("Amadeus".equalsIgnoreCase(provider)){
-    		json = amadeusBookingService.getBookingDetails(gdsPNR);
-    	}else if ("Mystifly".equalsIgnoreCase(provider)){
+		} else if("Amadeus".equalsIgnoreCase(provider)){
+			json = amadeusBookingService.getBookingDetails(gdsPNR);
+		}else if ("Mystifly".equalsIgnoreCase(provider)){
 			json =  mystiflyBookingService.getBookingDetails(gdsPNR);
 		}
 		return json;
@@ -224,50 +224,50 @@ public class BookingServiceWrapper {
 		JsonNode json = null;
 		if("Travelport".equalsIgnoreCase(provider) || "Galileo".equalsIgnoreCase(provider)){
 			json = travelPortBookingService.getBookingDetails(gdsPNR);
-    	} else if("Amadeus".equalsIgnoreCase(provider)){
-    		json = amadeusBookingService.getBookingDetailsByOfficeId(gdsPNR, officeId);
-    	}else if ("Mystifly".equalsIgnoreCase(provider)){
+		} else if("Amadeus".equalsIgnoreCase(provider)){
+			json = amadeusBookingService.getBookingDetailsByOfficeId(gdsPNR, officeId);
+		}else if ("Mystifly".equalsIgnoreCase(provider)){
 			json =  mystiflyBookingService.getBookingDetails(gdsPNR);
 		}
 		return json;
 	}
-	
+
 	public LowFareResponse getLowestFare(IssuanceRequest issuanceRequest) {
 		LowFareResponse lowFareRS = null;
 		if("Amadeus".equalsIgnoreCase(issuanceRequest.getProvider())) {
 			lowFareRS = amadeusLowestFareService.getLowestFare(issuanceRequest);
-    	} else if("Travelport".equalsIgnoreCase(issuanceRequest.getProvider())) {
-            lowFareRS = travelPortBookingService.getLowestFare(issuanceRequest.getGdsPNR(), issuanceRequest.getProvider(), issuanceRequest.isSeamen());
-    	} else if(Mystifly.PROVIDER.equalsIgnoreCase(issuanceRequest.getProvider())) {
-    		// Not implemented.
-    	}
+		} else if("Travelport".equalsIgnoreCase(issuanceRequest.getProvider())) {
+			lowFareRS = travelPortBookingService.getLowestFare(issuanceRequest.getGdsPNR(), issuanceRequest.getProvider(), issuanceRequest.isSeamen());
+		} else if(Mystifly.PROVIDER.equalsIgnoreCase(issuanceRequest.getProvider())) {
+			// Not implemented.
+		}
 		return lowFareRS;
 	}
 
-    public HashMap getBookingDetailsForPNR(JsonNode json) {
-        PNRRequest[] PNRRequestList = null;
-        HashMap<String, Object> jsonMap = new HashMap<>();
-        ObjectMapper objectMapper = new ObjectMapper();
-        TypeFactory typeFactory = objectMapper.getTypeFactory();
-        try {
-           PNRRequestList =
-                    objectMapper.readValue(json.toString(), PNRRequest[].class);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+	public HashMap getBookingDetailsForPNR(JsonNode json) {
+		PNRRequest[] PNRRequestList = null;
+		HashMap<String, Object> jsonMap = new HashMap<>();
+		ObjectMapper objectMapper = new ObjectMapper();
+		TypeFactory typeFactory = objectMapper.getTypeFactory();
+		try {
+			PNRRequestList =
+					objectMapper.readValue(json.toString(), PNRRequest[].class);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
-        for(PNRRequest pnrRequest: PNRRequestList){
-            if("Travelport".equalsIgnoreCase(pnrRequest.getProvider()) || "Galileo".equalsIgnoreCase(pnrRequest.getProvider())){
-                jsonMap.put(pnrRequest.getGdsPnr(), travelPortBookingService.getBookingDetails(pnrRequest.getGdsPnr()));
-            } else if("Amadeus".equalsIgnoreCase(pnrRequest.getProvider())){
-                jsonMap.put(pnrRequest.getGdsPnr(), amadeusBookingService.getBookingDetails(pnrRequest.getGdsPnr()));
-            } else if("Mystifly".equalsIgnoreCase(pnrRequest.getProvider())){
-                jsonMap.put(pnrRequest.getGdsPnr(), mystiflyBookingService.getBookingDetails(pnrRequest.getGdsPnr()));
-            }
-        }
+		for(PNRRequest pnrRequest: PNRRequestList){
+			if("Travelport".equalsIgnoreCase(pnrRequest.getProvider()) || "Galileo".equalsIgnoreCase(pnrRequest.getProvider())){
+				jsonMap.put(pnrRequest.getGdsPnr(), travelPortBookingService.getBookingDetails(pnrRequest.getGdsPnr()));
+			} else if("Amadeus".equalsIgnoreCase(pnrRequest.getProvider())){
+				jsonMap.put(pnrRequest.getGdsPnr(), amadeusBookingService.getBookingDetails(pnrRequest.getGdsPnr()));
+			} else if("Mystifly".equalsIgnoreCase(pnrRequest.getProvider())){
+				jsonMap.put(pnrRequest.getGdsPnr(), mystiflyBookingService.getBookingDetails(pnrRequest.getGdsPnr()));
+			}
+		}
 //        System.out.println(" HashMap ==============>>>>>>\n"+Json.toJson(jsonMap));
-        return jsonMap;
-    }
+		return jsonMap;
+	}
 
 	public IssuanceResponse priceBookedPNR(IssuanceRequest issuanceRequest){
 
@@ -323,8 +323,8 @@ public class BookingServiceWrapper {
 			issuanceResponse = indigoFlightService.issueTicket(issuanceRequest);
 		}
 		return issuanceResponse;
-  }
-  
+	}
+
 	public boolean addJocoPnrToGdsPnr(AddElementsToPnrDTO addElementsToPnrDTO) {
 
 		String provider = addElementsToPnrDTO.getProvider();

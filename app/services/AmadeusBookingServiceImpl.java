@@ -2650,12 +2650,12 @@ public class AmadeusBookingServiceImpl implements BookingService {
 
     public PNRResponse fetchAirlineWiseTimeLimitDetails (String gdsPNR ) {
 
-            logger.debug(" fetchAirlineWiseTimeLimitDetails called ........");
+        logger.debug(" fetchAirlineWiseTimeLimitDetails called ........");
 
-            PNRResponse pnrResponse = new PNRResponse();
-            PNRReply gdsPNRReply = null;
+        PNRResponse pnrResponse = new PNRResponse();
+        PNRReply gdsPNRReply = null;
 
-            AmadeusSessionWrapper amadeusSessionWrapper = null;
+        AmadeusSessionWrapper amadeusSessionWrapper = null;
         try{
             amadeusSessionWrapper = serviceHandler.logIn(false);
             gdsPNRReply = serviceHandler.retrievePNR(gdsPNR, amadeusSessionWrapper);
@@ -2670,7 +2670,7 @@ public class AmadeusBookingServiceImpl implements BookingService {
             throw new RuntimeException(e);
         }finally {
             if (amadeusSessionWrapper != null) {
-            serviceHandler.logOut(amadeusSessionWrapper);
+                serviceHandler.logOut(amadeusSessionWrapper);
             }
         }
 

@@ -257,11 +257,11 @@ public class Application {
 
     @BodyParser.Of(BodyParser.Json.class)
     public Result getBaggageInfo() {
-    	JsonNode json = request().body().asJson();
-    	SearchParameters searchParams = Json.fromJson(json.findPath("searchParams"), SearchParameters.class);
-    	FlightItinerary flightItinerary = Json.fromJson(json.findPath("flightItinerary"), FlightItinerary.class);
-    	String provider = json.get("provider").asText();
-    	Boolean seamen = Json.fromJson(json.findPath("travellerInfo").findPath("seamen"), Boolean.class);
+        JsonNode json = request().body().asJson();
+        SearchParameters searchParams = Json.fromJson(json.findPath("searchParams"), SearchParameters.class);
+        FlightItinerary flightItinerary = Json.fromJson(json.findPath("flightItinerary"), FlightItinerary.class);
+        String provider = json.get("provider").asText();
+        Boolean seamen = Json.fromJson(json.findPath("travellerInfo").findPath("seamen"), Boolean.class);
         int adultCount = Json.fromJson(json.findPath("travellerInfo").findPath("adultCount"), Integer.class);
         int childCount = Json.fromJson(json.findPath("travellerInfo").findPath("childCount"), Integer.class);
         int infantCount = Json.fromJson(json.findPath("travellerInfo").findPath("infantCount"), Integer.class);
@@ -274,10 +274,10 @@ public class Application {
     	FlightItinerary response = null;
     	try {
             logger.info("Baggage info "+Json.toJson(flightItinerary));
-    		response = flightInfoService.getBaggageInfo(flightItinerary, searchParams, provider, seamen,travellerMasterInfo);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+            response = flightInfoService.getBaggageInfo(flightItinerary, searchParams, provider, seamen,travellerMasterInfo);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return Controller.ok(Json.toJson(response));
     }
 
@@ -911,9 +911,9 @@ public class Application {
     }
 
 
-//    AirlineWise Time Limit
+    //    AirlineWise Time Limit
     public Result getAirlineWiseTimeLimit(){
-    JsonNode json = request().body().asJson();
+        JsonNode json = request().body().asJson();
         logger.debug("-----------------  getAirlineWiseTimeLimit Request: "+json);
 
         List<String> gdsPnrList = new ArrayList<>();

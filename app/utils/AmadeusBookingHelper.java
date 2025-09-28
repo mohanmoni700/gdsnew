@@ -3269,7 +3269,7 @@ public class AmadeusBookingHelper {
                     airlineSpecificQueueAndTimeLimitDetails.setDate(dayMonth);
                     airlineSpecificQueueAndTimeLimitDetails.setTime(hour + minute);
 
-                     if (timezone == null ) {
+                    if (timezone == null ) {
                         if(airline.equalsIgnoreCase("LX") || airline.equalsIgnoreCase("LH") || airline.equalsIgnoreCase("UA")) {
                             timezone = "LHG";
                         }else{
