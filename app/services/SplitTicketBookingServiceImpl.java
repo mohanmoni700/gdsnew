@@ -930,19 +930,29 @@ System.out.println("sim 2");
                 pnrResponses.add(pnrResponse);
                 if (isFirstSegmentSell && !pnrResponses.isEmpty()) {
                     PNRResponse pnrResponse1 = pnrResponses.get(0);
-                    Map<String, String> stringStringMap = pnrResponse.getSegmentBaggageMap();
-                    Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap = pnrResponse.getFareCheckRulesResponseMap();
-                    System.out.println("Segment Baggage Map :" + stringStringMap);
-                    stringStringMap.putAll(pnrResponse1.getSegmentBaggageMap());
-                    fareCheckRulesResponseMap.putAll(pnrResponse1.getFareCheckRulesResponseMap());
-                    /*// Add null checks to prevent NullPointerException
-                    if (stringStringMap != null && pnrResponse1.getSegmentBaggageMap() != null) {
+                    Map<String, String> stringStringMap = new HashMap<>();
+                    if(pnrResponse.getFareCheckRulesResponseMap() == null) {
+                        System.out.println("pnrResponse.getFareCheckRulesResponseMap() is null ");
+                        logger.info("pnrResponse.getFareCheckRulesResponseMap() null ");
+                    }
+                    if (pnrResponse1.getFareCheckRulesResponseMap() == null) {
+                        System.out.println("pnrResponse1.getFareCheckRulesResponseMap() is null ");
+                        logger.info("pnrResponse1.getFareCheckRulesResponseMap() null ");
+                    }
+                    Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap = new HashMap<>();
+                    if(pnrResponse.getFareCheckRulesResponseMap()!=null) {
+                        fareCheckRulesResponseMap.putAll(pnrResponse.getFareCheckRulesResponseMap());
+                    }
+                    if(pnrResponse1.getFareCheckRulesResponseMap()!=null) {
+                        fareCheckRulesResponseMap.putAll(pnrResponse1.getFareCheckRulesResponseMap());
+                    }
+                    if(pnrResponse.getSegmentBaggageMap() != null) {
+                        stringStringMap.putAll(pnrResponse.getSegmentBaggageMap());
+                    }
+                    if(pnrResponse1.getSegmentBaggageMap()!=null) {
                         stringStringMap.putAll(pnrResponse1.getSegmentBaggageMap());
                     }
-                    if (fareCheckRulesResponseMap != null && pnrResponse1.getFareCheckRulesResponseMap() != null) {
-                        fareCheckRulesResponseMap.putAll(pnrResponse1.getFareCheckRulesResponseMap());
-                    }*/
-                    
+                    System.out.println("Segment Baggage Map :" + stringStringMap);
                     pnrResponse.setSegmentBaggageMap(stringStringMap);
                     pnrResponse.setFareCheckRulesResponseMap(fareCheckRulesResponseMap);
 
