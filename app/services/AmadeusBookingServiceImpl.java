@@ -2128,7 +2128,6 @@ public class AmadeusBookingServiceImpl implements BookingService {
             List<Traveller> childTravellersList = new ArrayList<>();
             List<Traveller> infantTravellersList = new ArrayList<>();
             List<TravellerInfo> travellerinfoList = gdsPNRReply.getTravellerInfo();
-            String officeId = gdsPNRReply.getSecurityInformation().getQueueingInformation().getQueueingOfficeId();
             Preferences preferences = getPreferenceFromPNR(gdsPNRReply);
             for (TravellerInfo travellerInfo : travellerinfoList) {
                 Traveller traveller = new Traveller();
@@ -2284,6 +2283,7 @@ public class AmadeusBookingServiceImpl implements BookingService {
             List<TicketDisplayTSTReply.FareList> fareList = ticketDisplayTSTReply.getFareList();
             validatingCarrierInSegment(fareList, flightItinerary, isSeamen, gdsPNRReply);
 
+            String officeId = ticketDisplayTSTReply.getFareList().get(0).getOfficeDetails().get(0).getOriginIdentification().getInHouseIdentification2();
 
             pricingInfo = getPricingInfoFromTSTForUploadBooking(gdsPNRReply, ticketDisplayTSTReply, isSeamen, journeyList);
             if (isSeamen) {
@@ -2386,7 +2386,10 @@ public class AmadeusBookingServiceImpl implements BookingService {
             }
             masterInfo.setItinerary(flightItinerary);
 
-            List<HashMap> miniRules = getMiniRuleFeeFromPNR(gdsPNR);
+            List<HashMap> miniRules = null;
+            if(!pnrResponse.isNonOfficeId())
+                miniRules = getMiniRuleFeeFromPNR(gdsPNR);
+
             logger.debug("mini rules in getbooking details is " + Json.toJson(miniRules));
             pnrResponse.setAirlinePNRMap(AmadeusHelper.readMultipleAirlinePNR(gdsPNRReply));
             createPNRResponse(gdsPNRReply, pricePNRReply, pnrResponse, masterInfo);
