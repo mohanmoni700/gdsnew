@@ -39,6 +39,8 @@ public class Journey implements Serializable
 
     private Boolean isRefundable;
 
+    private String akbarIndex;
+
     public String getFullSegmentKey() {
         return fullSegmentKey;
     }
@@ -79,6 +81,36 @@ public class Journey implements Serializable
     private String groupingKey;
 
     private String fareDescription;
+
+    private String marketingCarrier;
+
+    private String operatingCarrier;
+
+    public String getMarketingCarrier() {
+        return marketingCarrier;
+    }
+
+    public void setMarketingCarrier(String marketingCarrier) {
+        this.marketingCarrier = marketingCarrier;
+    }
+
+    public String getOperatingCarrier() {
+        return operatingCarrier;
+    }
+
+    public void setOperatingCarrier(String operatingCarrier) {
+        this.operatingCarrier = operatingCarrier;
+    }
+
+    public String getValidatingCarrier() {
+        return validatingCarrier;
+    }
+
+    public void setValidatingCarrier(String validatingCarrier) {
+        this.validatingCarrier = validatingCarrier;
+    }
+
+    private String validatingCarrier;
 
     private List<String> lastTktDate;
     private boolean seamen;
@@ -132,6 +164,14 @@ public class Journey implements Serializable
 
     public void setGroupingKey(String groupingKey) {
         this.groupingKey = groupingKey;
+    }
+
+    public String getAkbarIndex() {
+        return akbarIndex;
+    }
+
+    public void setAkbarIndex(String akbarIndex) {
+        this.akbarIndex = akbarIndex;
     }
 
     public Integer getHashCode() {

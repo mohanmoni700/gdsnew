@@ -107,8 +107,11 @@ public class AmadeusAncillaryServiceImpl implements AmadeusAncillaryService {
             //Saving the response here
             serviceHandler.savePNRForAncillaryServices(amadeusSessionWrapper);
 
+            Map<String, Long> odTicketMap = createOriginDestinationTicketMap(ancillaryBookingRequest);
+            Map<String, String> segmentODMap = createSegmentODMap(ancillaryBookingRequest);
+
             //Mapping amaServiceBookPriceServiceRS here to send to JOCO
-            ancillaryResponseMap = getPaymentConfirmationForAncillaryServices(amaServiceBookPriceServiceRS, confirmPaymentRS);
+            ancillaryResponseMap = getPaymentConfirmationForAncillaryServices(amaServiceBookPriceServiceRS, confirmPaymentRS, odTicketMap , segmentODMap);
 
 
         } catch (Exception e) {
@@ -120,6 +123,73 @@ public class AmadeusAncillaryServiceImpl implements AmadeusAncillaryService {
         }
 
         return ancillaryResponseMap;
+    }
+
+    private Map<String, String> createSegmentODMap(AncillaryBookingRequest ancillaryBookingRequest) {
+
+        Map<String, String> segmentODMap = new HashMap<>();
+        int baggageCounter = 0;
+        int mealCounter = 0;
+
+        // From baggage details
+        if (ancillaryBookingRequest.getBaggageDetailsList() != null) {
+            for (BaggageDetails baggage : ancillaryBookingRequest.getBaggageDetailsList()) {
+                baggageCounter++;
+                if (baggage.getSegmentTattooList() != null) {
+                    String odKey = baggage.getOrigin() + "-" + baggage.getDestination()+"-"+baggageCounter;
+                    for (String segmentTattoo : baggage.getSegmentTattooList()) {
+                        String segmentKey = segmentTattoo + "-"+baggageCounter;
+                        segmentODMap.put(segmentKey, odKey);
+                    }
+                }
+            }
+        }
+
+        // From meal details
+        if (ancillaryBookingRequest.getMealDetailsList() != null) {
+            for (MealDetails meal : ancillaryBookingRequest.getMealDetailsList()) {
+                mealCounter++;
+                if (meal.getSegmentTattoo() != null) {
+                    String odKey = meal.getOrigin() + "-" + meal.getDestination()+"-"+mealCounter;
+                    String segmentTattoo = meal.getSegmentTattoo()+"-"+mealCounter;
+                    segmentODMap.put(segmentTattoo, odKey);
+                }
+            }
+        }
+
+        return segmentODMap;
+
+    }
+
+    private Map<String, Long> createOriginDestinationTicketMap(AncillaryBookingRequest ancillaryBookingRequest) {
+
+        Map<String, Long> odTicketMap = new HashMap<>();
+        int baggageCounter = 0;
+        int mealCounter = 0;
+        // Map baggage details
+        if (ancillaryBookingRequest.getBaggageDetailsList() != null) {
+            for (BaggageDetails baggage : ancillaryBookingRequest.getBaggageDetailsList()) {
+                if (baggage.getOrigin() != null && baggage.getDestination() != null && baggage.getTicketId() != null) {
+                    baggageCounter++;
+                    String key = baggage.getOrigin() + "-" + baggage.getDestination()+"-"+baggageCounter;
+                    odTicketMap.put(key, baggage.getTicketId());
+                }
+            }
+        }
+
+        // Map meal details (if they have origin-destination)
+        if (ancillaryBookingRequest.getMealDetailsList() != null) {
+            for (MealDetails meal : ancillaryBookingRequest.getMealDetailsList()) {
+                if (meal.getOrigin() != null && meal.getDestination() != null && meal.getTicketId() != null) {
+                    mealCounter++;
+                    String key = meal.getOrigin() + "-" + meal.getDestination()+"-"+mealCounter;
+                    odTicketMap.put(key, meal.getTicketId());
+                }
+            }
+        }
+
+        return odTicketMap;
+
     }
 
     //Baggage for only F type is being retrieved here (Uses Standalone Catalogue) -> Journey Wise Baggage Response
@@ -551,7 +621,7 @@ public class AmadeusAncillaryServiceImpl implements AmadeusAncillaryService {
     }
 
     //Ancillary Services (Meal And Baggage) Booking confirmation is done here
-    private static Map<String, List<AncillaryBookingResponse>> getPaymentConfirmationForAncillaryServices(AMAServiceBookPriceServiceRS amaServiceBookPriceServiceRS, AncillaryBookingResponse confirmPaymentRS) {
+    private static Map<String, List<AncillaryBookingResponse>> getPaymentConfirmationForAncillaryServices(AMAServiceBookPriceServiceRS amaServiceBookPriceServiceRS, AncillaryBookingResponse confirmPaymentRS, Map<String, Long> odTicketMap, Map<String, String> segmentODMap) {
 
         try {
 
@@ -599,7 +669,7 @@ public class AmadeusAncillaryServiceImpl implements AmadeusAncillaryService {
                     }
                 }
 
-
+                int counter = 1;
                 if (serviceList != null && !serviceList.isEmpty()) {
                     for (AMAServiceBookPriceServiceRS.Success.Services.Service service : serviceList) {
 
@@ -616,6 +686,12 @@ public class AmadeusAncillaryServiceImpl implements AmadeusAncillaryService {
                         List<String> segmentRefId = service.getSegmentRefId();
                         if (segmentRefId != null && !segmentRefId.isEmpty()) {
                             ancillaryBookingDetails.setSegmentRefId(segmentRefId.get(0));
+                            String segmentKey = segmentRefId.get(0) + "-" + counter;
+                            String odKey = segmentODMap.get(segmentKey);
+                            if (odKey != null && odTicketMap.containsKey(odKey)) {
+                                ancillaryBookingDetails.setTicketId(odTicketMap.get(odKey));
+                            }
+
                         }
 
                         // ✅ Match quotation for this service
@@ -637,6 +713,7 @@ public class AmadeusAncillaryServiceImpl implements AmadeusAncillaryService {
                             newList.add(ancillaryBookingDetails);
                             ancillaryBookingResponseMap.put(ancillaryBookingDetails.getAmadeusPaxRef(), newList);
                         }
+                        counter++;
                     }
                 }
 

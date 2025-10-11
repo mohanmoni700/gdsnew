@@ -10,6 +10,7 @@ public class AncillaryBookingResponse {
     private String amount;
     private String errorMessage;
     private String errorCode;
+    private Long ticketId;
 
 
     public String getCode() {
@@ -75,5 +76,13 @@ public class AncillaryBookingResponse {
 
     public void setErrorCode(String errorCode) {
         this.errorCode = errorCode;
+    }
+
+    public Long getTicketId() {
+        return ticketId;
+    }
+
+    public void setTicketId(Long ticketId) {
+        this.ticketId = ticketId;
     }
 }

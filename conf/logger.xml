@@ -145,6 +145,19 @@
         </encoder>
     </appender>
 
+    <appender name="AKBAR_LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${application.home}/logs/akbar.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- Daily rollover with compression -->
+            <fileNamePattern>${application.home}/logs/akbar-log-%d{yyyy-MM-dd}.gz</fileNamePattern>
+            <!-- keep 30 days worth of history -->
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{yyyy-MM-dd HH:mm:ss ZZZZ} - [%level] - from %logger in %thread %n%message%n%xException%n</pattern>
+        </encoder>
+    </appender>
+
     <logger name="gds" level="DEBUG" additivity="false">
         <appender-ref ref="SPLIT_TICKET_LOG_FILE" />
     </logger>
@@ -165,6 +178,9 @@
     </logger>
     <logger name="indigo" level="DEBUG" additivity="false">
         <appender-ref ref="INDIGO_LOG_FILE" />
+    </logger>
+    <logger name="akbar" level="DEBUG" additivity="false">
+        <appender-ref ref="AKBAR_LOG_FILE" />
     </logger>
     <logger name="travelport" level="DEBUG" additivity="false">
         <appender-ref ref="TRAVELPORT_LOG_FILE" />

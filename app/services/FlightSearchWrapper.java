@@ -48,7 +48,7 @@ public class FlightSearchWrapper {
         int maxThreads = 1;
         for(FlightSearch flightSearch : flightSearchList){
             if(flightSearch.getOfficeList() == null || flightSearch.getOfficeList().size() == 0)
-                  maxThreads += 2;
+                  maxThreads += 3;
             else
                 maxThreads += flightSearch.getOfficeList().size();
         }
@@ -295,6 +295,8 @@ public class FlightSearchWrapper {
             System.out.println("Amadeus merge");
         } else if (provider.equalsIgnoreCase("indigo")) {
             System.out.println("Indigo merge");
+        } else if (provider.equalsIgnoreCase("Akbar")) {
+            System.out.println("Akbar merge");
         }
         concurrentHashMap = airSolution.getGroupingKeyMap();
         FlightSearchOffice office = searchResponse.getFlightSearchOffice();
