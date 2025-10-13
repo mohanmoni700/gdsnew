@@ -221,15 +221,18 @@ public class IndigoFlightServiceImpl implements IndigoFlightService {
             RequestBody requestBody = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
             Request request = new Request.Builder().url(endPoint + "fullRefundEligibility").post(requestBody).build();
             try (Response response = client.newCall(request).execute()) {
-                if (response.isSuccessful()) {
-                    String responseBody = response.body().string();
-                    indigoLogger.info("Indigo Full Cancellation Response: " + responseBody);
-                    return objectMapper.readValue(responseBody, TicketCheckEligibilityRes.class);
-                } else {
-                    logger.error("Failed to fetch data from Indigo API: " + response.message() +
-                            " for issuance request: " + Json.toJson(indigoRefundRequest));
-                    throw new Exception("Failed to fetch data from Indigo API: " + response.message());
+                indigoLogger.info("Indigo Full Cancellation Response for PNR {}: {}", gdsPNR, response);
+                String responseBody = null;
+                if (response.body() != null) {
+                    responseBody = response.body().string();
                 }
+                indigoLogger.info("Indigo Full Cancellation Response after convert for PNR {}: {}", gdsPNR, responseBody);
+                if (!response.isSuccessful() || responseBody == null || responseBody.trim().isEmpty()) {
+                    logger.error("Failed to fetch data from Indigo API. HTTP status: {}, Response body: {}, Request: {}",
+                            response.code(), responseBody, Json.toJson(indigoRefundRequest));
+                    throw new Exception("Failed to fetch data from Indigo API: HTTP " + response.code());
+                }
+                return objectMapper.readValue(responseBody, TicketCheckEligibilityRes.class);
             }
         } catch (Exception e) {
             logger.error("Error during Indigo full cancellation: " + e.getMessage() +
