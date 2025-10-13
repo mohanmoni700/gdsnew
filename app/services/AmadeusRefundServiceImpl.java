@@ -26,8 +26,11 @@ import utils.RefundHelper;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class AmadeusRefundServiceImpl implements RefundService{
@@ -329,13 +332,15 @@ public class AmadeusRefundServiceImpl implements RefundService{
                         if (amaTicketInitRefundRS != null && amaTicketInitRefundRS.getGeneralReply().getErrors() == null) {
                             List<AMATicketInitRefundRS.FunctionalData.ContractBundle> contractBundles = amaTicketInitRefundRS.getFunctionalData().getContractBundle();
                             for(AMATicketInitRefundRS.FunctionalData.ContractBundle contractBundle : contractBundles){
-                                List<RefundDetailsType.Contracts.Contract> contracts = contractBundle.getRefundDetails().getContracts().getContract();
-                                for(RefundDetailsType.Contracts.Contract contract : contracts){
-                                    List<MonetaryInformationType> monetaryInformations = contract.getMonetaryInformations().getMonetaryInformation();
-                                    for(MonetaryInformationType monetaryInformationType :monetaryInformations){
-                                        if(monetaryInformationType.getQualifier().toString().equalsIgnoreCase("RFT")){
-                                            ticketCheckEligibilityRes.setCurrency(monetaryInformationType.getCurrencyCode());
-                                            totalRefundable = totalRefundable.add(monetaryInformationType.getAmount());
+                                if (contractBundle.getRefundDetails() != null) {
+                                    List<RefundDetailsType.Contracts.Contract> contracts = contractBundle.getRefundDetails().getContracts().getContract();
+                                    for (RefundDetailsType.Contracts.Contract contract : contracts) {
+                                        List<MonetaryInformationType> monetaryInformations = contract.getMonetaryInformations().getMonetaryInformation();
+                                        for (MonetaryInformationType monetaryInformationType : monetaryInformations) {
+                                            if (monetaryInformationType.getQualifier().toString().equalsIgnoreCase("RFT")) {
+                                                ticketCheckEligibilityRes.setCurrency(monetaryInformationType.getCurrencyCode());
+                                                totalRefundable = totalRefundable.add(monetaryInformationType.getAmount());
+                                            }
                                         }
                                     }
                                 }
@@ -519,10 +524,28 @@ public class AmadeusRefundServiceImpl implements RefundService{
         return active;
     }
 
-    public List<String> getTicketList(List<PNRReply.DataElementsMaster.DataElementsIndiv> dataElementsIndivList){
-        List<String> ticketsList =  dataElementsIndivList.stream().flatMap(dataElementsIndiv -> dataElementsIndiv.getOtherDataFreetext().stream()).
-                filter(longFreeTextType -> longFreeTextType.getFreetextDetail().getType().equalsIgnoreCase("P06"))
-                .map(longFreeTextType -> longFreeTextType.getLongFreetext().toString()).collect(Collectors.toList());
+    public List<String> getTicketList(List<PNRReply.DataElementsMaster.DataElementsIndiv> dataElementsIndivList) {
+
+        if (dataElementsIndivList == null || dataElementsIndivList.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<String> ticketsList = dataElementsIndivList.stream()
+                .filter(Objects::nonNull)
+                .flatMap(dataElementsIndiv -> {
+                    if (dataElementsIndiv.getOtherDataFreetext() != null) {
+                        return dataElementsIndiv.getOtherDataFreetext().stream();
+                    }
+                    return Stream.empty();
+                })
+                .filter(longFreeTextType ->
+                        longFreeTextType != null &&
+                                longFreeTextType.getFreetextDetail() != null &&
+                                "P06".equalsIgnoreCase(longFreeTextType.getFreetextDetail().getType()) &&
+                                longFreeTextType.getLongFreetext() != null
+                )
+                .map(longFreeTextType -> longFreeTextType.getLongFreetext().toString())
+                .collect(Collectors.toList());
 
         List<String> finalticketsList = new ArrayList<>();
         for(String ticket : ticketsList){
@@ -534,6 +557,7 @@ public class AmadeusRefundServiceImpl implements RefundService{
 
         return finalticketsList;
     }
+
 
     public String getTicketListwithAL(TicketProcessEDocReply ticketProcessEDocReply){
         String tickets = " ";

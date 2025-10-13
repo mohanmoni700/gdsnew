@@ -1,6 +1,7 @@
 package services;
 
 import com.amadeus.xml.pnracc_14_1_1a.PNRReply;
+import com.amadeus.xml.trcanr_14_1_1a.ErrorGroupType;
 import com.amadeus.xml.trcanr_14_1_1a.TicketCancelDocumentReply;
 import com.compassites.GDSWrapper.amadeus.ServiceHandler;
 import com.compassites.model.ErrorMessage;
@@ -51,6 +52,19 @@ public class AmadeusTicketCancelDocumentServiceImpl implements TicketCancelDocum
                         ticketCancelDocumentResponse.setSuccess(true);
                     } else {
                         ticketCancelDocumentResponse.setSuccess(false);
+                    }
+                    ErrorGroupType errorGroup = result.getErrorGroup();
+                    if (errorGroup != null) {
+                        String errorMsg = errorGroup.getErrorWarningDescription().getFreeText().get(0);
+                        String errorCode = errorGroup.getErrorOrWarningCodeDetails().getErrorDetails().getErrorCode();
+
+                        ErrorMessage errorMessage = new ErrorMessage();
+                        errorMessage.setProvider("Amadeus");
+                        errorMessage.setType(ErrorMessage.ErrorType.ERROR);
+                        errorMessage.setGdsPNR(pnr);
+                        errorMessage.setMessage(errorMsg);
+
+                        ticketCancelDocumentResponse.setErrorMessage(errorMessage);
                     }
                 }
             } else {

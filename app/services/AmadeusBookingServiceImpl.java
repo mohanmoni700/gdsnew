@@ -494,6 +494,7 @@ public class AmadeusBookingServiceImpl implements BookingService {
                                 cancelPNRResponse.setSuccess(true);
                             } else {
                                 cancelPNRResponse.setSuccess(false);
+                                cancelPNRResponse.setErrorMessage(ticketCancelDocumentResponse.getErrorMessage());
                             }
                         } else if (type.equalsIgnoreCase(SPLIT_PNR)) {
                             cancelPNRResponse.setSuccess(true);
@@ -2248,8 +2249,11 @@ public class AmadeusBookingServiceImpl implements BookingService {
             Map<String, Integer> paxTypeCount = getPaxTypeCount(travellerinfoList);
             String paxType = travellerinfoList.get(0).getPassengerData().get(0).getTravellerInformation().getPassenger().get(0).getType();
             boolean isSeamen = false;
+
             if ("sea".equalsIgnoreCase(paxType) || "sc".equalsIgnoreCase(paxType))
                 isSeamen = true;
+
+
 
             FlightItinerary flightItinerary = new FlightItinerary();
             journeyList = getJourneyListFromPNRResponse(gdsPNRReply, redisTemplate);

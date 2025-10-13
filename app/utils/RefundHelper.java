@@ -24,178 +24,183 @@ public class RefundHelper {
         List<PerPaxRefundPricingInformation> perPaxRefundPricingInformationList = new ArrayList<>();
 
         try {
+            if (contractBundleList != null && !contractBundleList.isEmpty()) {
+                for (AMATicketInitRefundRS.FunctionalData.ContractBundle contractBundle : contractBundleList) {
+                    PerPaxRefundPricingInformation perPaxRefundPricingInformation = new PerPaxRefundPricingInformation();
 
-            for (AMATicketInitRefundRS.FunctionalData.ContractBundle contractBundle : contractBundleList) {
-                PerPaxRefundPricingInformation perPaxRefundPricingInformation = new PerPaxRefundPricingInformation();
+                    if (contractBundle != null) {
+                        RefundDetailsType.Contracts contracts = contractBundle.getRefundDetails().getContracts();
+                        if (contracts != null) {
+                            List<RefundDetailsType.Contracts.Contract> contractList = contracts.getContract();
 
-                RefundDetailsType.Contracts contracts = contractBundle.getRefundDetails().getContracts();
-                List<RefundDetailsType.Contracts.Contract> contractList = contracts.getContract();
+                            for (RefundDetailsType.Contracts.Contract contract : contractList) {
 
-                for (RefundDetailsType.Contracts.Contract contract : contractList) {
+                                RefundDetailsType.Contracts.Contract.Segments segments = contract.getSegments();
+                                RefundDetailsType.Contracts.Contract.Passengers passengers = contract.getPassengers();
+                                RefundDetailsType.Contracts.Contract.Taxes taxes = contract.getTaxes();
+                                RefundDetailsType.Contracts.Contract.Penalties penalties = contract.getPenalties();
+                                RefundDetailsType.Contracts.Contract.Commissions commissions = contract.getCommissions();
+                                RefundDetailsType.Contracts.Contract.MonetaryInformations monetaryInformations = contract.getMonetaryInformations();
+                                RefundDetailsType.Contracts.Contract.RefundedRoute refundedRoute = contract.getRefundedRoute();
+                                RefundDetailsType.Contracts.Contract.Refundable refundable = contract.getRefundable();
+                                List<DocumentAndCouponInformationType> documentAndCouponInformation = contract.getDocumentAndCouponInformation();
 
-                    RefundDetailsType.Contracts.Contract.Segments segments = contract.getSegments();
-                    RefundDetailsType.Contracts.Contract.Passengers passengers = contract.getPassengers();
-                    RefundDetailsType.Contracts.Contract.Taxes taxes = contract.getTaxes();
-                    RefundDetailsType.Contracts.Contract.Penalties penalties = contract.getPenalties();
-                    RefundDetailsType.Contracts.Contract.Commissions commissions = contract.getCommissions();
-                    RefundDetailsType.Contracts.Contract.MonetaryInformations monetaryInformations = contract.getMonetaryInformations();
-                    RefundDetailsType.Contracts.Contract.RefundedRoute refundedRoute = contract.getRefundedRoute();
-                    RefundDetailsType.Contracts.Contract.Refundable refundable = contract.getRefundable();
-                    List<DocumentAndCouponInformationType> documentAndCouponInformation = contract.getDocumentAndCouponInformation();
+                                //Setting segment tattoos for refunded segments here
+                                List<BigInteger> refundedSegmentTattoos = new ArrayList<>();
+                                if (segments != null && !segments.getSegment().isEmpty()) {
+                                    List<RefundedItineraryType> refundedItineraryTypeList = segments.getSegment();
+                                    for (RefundedItineraryType refundedSegmentTattoo : refundedItineraryTypeList) {
+                                        refundedSegmentTattoos.add(BigInteger.valueOf(refundedSegmentTattoo.getTattoo()));
+                                    }
+                                }
+                                perPaxRefundPricingInformation.setRefundedSegmentTattoos(refundedSegmentTattoos);
 
-                    //Setting segment tattoos for refunded segments here
-                    List<BigInteger> refundedSegmentTattoos = new ArrayList<>();
-                    if(segments!=null && !segments.getSegment().isEmpty()) {
-                        List<RefundedItineraryType> refundedItineraryTypeList = segments.getSegment();
-                        for (RefundedItineraryType refundedSegmentTattoo : refundedItineraryTypeList) {
-                            refundedSegmentTattoos.add(BigInteger.valueOf(refundedSegmentTattoo.getTattoo()));
-                        }
-                    }
-                    perPaxRefundPricingInformation.setRefundedSegmentTattoos(refundedSegmentTattoos);
+                                //Setting Pax Info here
+                                PassengerType passengerType = passengers.getPassenger().get(0);
 
-                    //Setting Pax Info here
-                    PassengerType passengerType = passengers.getPassenger().get(0);
+                                String paxFullName = passengerType.getFullName();
+                                BigInteger paxTattoo = BigInteger.valueOf(passengerType.getTattoo());
+                                perPaxRefundPricingInformation.setFullName(paxFullName);
+                                perPaxRefundPricingInformation.setPaxTattoo(paxTattoo);
 
-                    String paxFullName = passengerType.getFullName();
-                    BigInteger paxTattoo = BigInteger.valueOf(passengerType.getTattoo());
-                    perPaxRefundPricingInformation.setFullName(paxFullName);
-                    perPaxRefundPricingInformation.setPaxTattoo(paxTattoo);
+                                //Setting Detailed Tax Details here
+                                List<DetailedTaxInformation> detailedTaxInformationList = new ArrayList<>();
+                                if (taxes != null && !taxes.getTax().isEmpty()) {
 
-                    //Setting Detailed Tax Details here
-                    List<DetailedTaxInformation> detailedTaxInformationList = new ArrayList<>();
-                    if(taxes!=null && !taxes.getTax().isEmpty()) {
+                                    List<TaxType> taxTypeList = taxes.getTax();
+                                    for (TaxType taxType : taxTypeList) {
+                                        DetailedTaxInformation detailedTaxInformation = new DetailedTaxInformation();
 
-                        List<TaxType> taxTypeList = taxes.getTax();
-                        for (TaxType taxType : taxTypeList) {
-                            DetailedTaxInformation detailedTaxInformation = new DetailedTaxInformation();
-
-                            BigDecimal amount = taxType.getAmount();
-                            String currency = taxType.getCurrencyCode();
-                            BigInteger decimalPlaces = BigInteger.valueOf(taxType.getDecimalPlaces().longValue());
-                            String category = taxType.getCategory();
-                            String isoCode = taxType.getISOCode();
+                                        BigDecimal amount = taxType.getAmount();
+                                        String currency = taxType.getCurrencyCode();
+                                        BigInteger decimalPlaces = BigInteger.valueOf(taxType.getDecimalPlaces().longValue());
+                                        String category = taxType.getCategory();
+                                        String isoCode = taxType.getISOCode();
 
 
-                            detailedTaxInformation.setAmount(amount);
-                            detailedTaxInformation.setCurrency(currency);
-                            detailedTaxInformation.setDecimalPlaces(decimalPlaces);
-                            detailedTaxInformation.setCategory(category);
-                            detailedTaxInformation.setIsoCode(isoCode);
+                                        detailedTaxInformation.setAmount(amount);
+                                        detailedTaxInformation.setCurrency(currency);
+                                        detailedTaxInformation.setDecimalPlaces(decimalPlaces);
+                                        detailedTaxInformation.setCategory(category);
+                                        detailedTaxInformation.setIsoCode(isoCode);
 
-                            detailedTaxInformationList.add(detailedTaxInformation);
+                                        detailedTaxInformationList.add(detailedTaxInformation);
 
-                        }
-                    }
-                    perPaxRefundPricingInformation.setDetailedTaxInformationList(detailedTaxInformationList);
+                                    }
+                                }
+                                perPaxRefundPricingInformation.setDetailedTaxInformationList(detailedTaxInformationList);
 
-                    //Setting Detailed penalties here
-                    List<DetailedPenaltyInformation> detailedPenaltyInformationList = new ArrayList<>();
-                    if(penalties!=null && !penalties.getPenalty().isEmpty()) {
+                                //Setting Detailed penalties here
+                                List<DetailedPenaltyInformation> detailedPenaltyInformationList = new ArrayList<>();
+                                if (penalties != null && !penalties.getPenalty().isEmpty()) {
 
-                        List<PenaltyType> penaltyList = penalties.getPenalty();
-                        for (PenaltyType penalty : penaltyList) {
-                            DetailedPenaltyInformation detailedPenaltyInformation = new DetailedPenaltyInformation();
+                                    List<PenaltyType> penaltyList = penalties.getPenalty();
+                                    for (PenaltyType penalty : penaltyList) {
+                                        DetailedPenaltyInformation detailedPenaltyInformation = new DetailedPenaltyInformation();
 
-                            BigDecimal percent = penalty.getPercent();
-                            BigDecimal amount = penalty.getAmount();
-                            String currency = penalty.getCurrencyCode();
-                            BigInteger decimalPlaces = BigInteger.valueOf(penalty.getDecimalPlaces().longValue());
-                            String penaltyType = penalty.getPenaltyType();
+                                        BigDecimal percent = penalty.getPercent();
+                                        BigDecimal amount = penalty.getAmount();
+                                        String currency = penalty.getCurrencyCode();
+                                        BigInteger decimalPlaces = BigInteger.valueOf(penalty.getDecimalPlaces().longValue());
+                                        String penaltyType = penalty.getPenaltyType();
 
-                            detailedPenaltyInformation.setPercent(percent);
-                            detailedPenaltyInformation.setAmount(amount);
-                            detailedPenaltyInformation.setCurrency(currency);
-                            detailedPenaltyInformation.setDecimalPlaces(decimalPlaces);
-                            detailedPenaltyInformation.setPenaltyType(penaltyType);
+                                        detailedPenaltyInformation.setPercent(percent);
+                                        detailedPenaltyInformation.setAmount(amount);
+                                        detailedPenaltyInformation.setCurrency(currency);
+                                        detailedPenaltyInformation.setDecimalPlaces(decimalPlaces);
+                                        detailedPenaltyInformation.setPenaltyType(penaltyType);
 
-                            detailedPenaltyInformationList.add(detailedPenaltyInformation);
-                        }
-                    }
-                    perPaxRefundPricingInformation.setDetailedPenaltyInformationList(detailedPenaltyInformationList);
+                                        detailedPenaltyInformationList.add(detailedPenaltyInformation);
+                                    }
+                                }
+                                perPaxRefundPricingInformation.setDetailedPenaltyInformationList(detailedPenaltyInformationList);
 
-                    //Setting Commission Details here
-                    List<DetailedCommissionInformation> detailedCommissionInformationList = new ArrayList<>();
-                    if(commissions!=null && !commissions.getCommission().isEmpty()) {
+                                //Setting Commission Details here
+                                List<DetailedCommissionInformation> detailedCommissionInformationList = new ArrayList<>();
+                                if (commissions != null && !commissions.getCommission().isEmpty()) {
 
-                        List<CommissionType> commissionList = commissions.getCommission();
-                        for (CommissionType commission : commissionList) {
-                            DetailedCommissionInformation detailedCommissionInformation = new DetailedCommissionInformation();
-                            BigDecimal percent = commission.getPercent();
-                            String comment = commission.getComment().getName();
+                                    List<CommissionType> commissionList = commissions.getCommission();
+                                    for (CommissionType commission : commissionList) {
+                                        DetailedCommissionInformation detailedCommissionInformation = new DetailedCommissionInformation();
+                                        BigDecimal percent = commission.getPercent();
+                                        String comment = commission.getComment().getName();
 
-                            CommissionType.CommissionPayableAmount commissionPayableAmount = commission.getCommissionPayableAmount();
-                            BigDecimal amount = commissionPayableAmount.getAmount();
-                            String currency = commissionPayableAmount.getCurrencyCode();
-                            BigInteger decimalPlaces = BigInteger.valueOf(commissionPayableAmount.getDecimalPlaces().longValue());
+                                        CommissionType.CommissionPayableAmount commissionPayableAmount = commission.getCommissionPayableAmount();
+                                        BigDecimal amount = commissionPayableAmount.getAmount();
+                                        String currency = commissionPayableAmount.getCurrencyCode();
+                                        BigInteger decimalPlaces = BigInteger.valueOf(commissionPayableAmount.getDecimalPlaces().longValue());
 
-                            detailedCommissionInformation.setPercent(percent);
-                            detailedCommissionInformation.setAmount(amount);
-                            detailedCommissionInformation.setCurrency(currency);
-                            detailedCommissionInformation.setDecimalPlaces(decimalPlaces);
-                            detailedCommissionInformation.setComment(comment);
+                                        detailedCommissionInformation.setPercent(percent);
+                                        detailedCommissionInformation.setAmount(amount);
+                                        detailedCommissionInformation.setCurrency(currency);
+                                        detailedCommissionInformation.setDecimalPlaces(decimalPlaces);
+                                        detailedCommissionInformation.setComment(comment);
 
-                            detailedCommissionInformationList.add(detailedCommissionInformation);
-                        }
-                    }
-                    perPaxRefundPricingInformation.setDetailedCommissionInformationList(detailedCommissionInformationList);
+                                        detailedCommissionInformationList.add(detailedCommissionInformation);
+                                    }
+                                }
+                                perPaxRefundPricingInformation.setDetailedCommissionInformationList(detailedCommissionInformationList);
 
-                    //Setting Monetary Information Details here
-                    List<DetailedMonetaryInformation> detailedMonetaryInformationList = new ArrayList<>();
-                    if(monetaryInformations!= null && !monetaryInformations.getMonetaryInformation().isEmpty()) {
+                                //Setting Monetary Information Details here
+                                List<DetailedMonetaryInformation> detailedMonetaryInformationList = new ArrayList<>();
+                                if (monetaryInformations != null && !monetaryInformations.getMonetaryInformation().isEmpty()) {
 
-                        List<MonetaryInformationType> monetaryInformationList = monetaryInformations.getMonetaryInformation();
-                        for (MonetaryInformationType monetaryInformation : monetaryInformationList) {
-                            DetailedMonetaryInformation detailedMonetaryInformation = new DetailedMonetaryInformation();
+                                    List<MonetaryInformationType> monetaryInformationList = monetaryInformations.getMonetaryInformation();
+                                    for (MonetaryInformationType monetaryInformation : monetaryInformationList) {
+                                        DetailedMonetaryInformation detailedMonetaryInformation = new DetailedMonetaryInformation();
 
-                            String qualifier = monetaryInformation.getQualifier();
-                            BigDecimal amount = monetaryInformation.getAmount();
-                            String currency = monetaryInformation.getCurrencyCode();
-                            //Weirdest error ever!!
-                            BigInteger decimalPlaces = BigInteger.valueOf(monetaryInformation.getDecimalPlaces().longValue());
+                                        String qualifier = monetaryInformation.getQualifier();
+                                        BigDecimal amount = monetaryInformation.getAmount();
+                                        String currency = monetaryInformation.getCurrencyCode();
+                                        //Weirdest error ever!!
+                                        BigInteger decimalPlaces = BigInteger.valueOf(monetaryInformation.getDecimalPlaces().longValue());
 
-                            detailedMonetaryInformation.setQualifier(qualifier);
-                            detailedMonetaryInformation.setAmount(amount);
-                            detailedMonetaryInformation.setCurrency(currency);
-                            detailedMonetaryInformation.setDecimalPlaces(decimalPlaces);
+                                        detailedMonetaryInformation.setQualifier(qualifier);
+                                        detailedMonetaryInformation.setAmount(amount);
+                                        detailedMonetaryInformation.setCurrency(currency);
+                                        detailedMonetaryInformation.setDecimalPlaces(decimalPlaces);
 
-                            detailedMonetaryInformationList.add(detailedMonetaryInformation);
-                        }
-                    }
-                    perPaxRefundPricingInformation.setDetailedMonetaryInformationList(detailedMonetaryInformationList);
+                                        detailedMonetaryInformationList.add(detailedMonetaryInformation);
+                                    }
+                                }
+                                perPaxRefundPricingInformation.setDetailedMonetaryInformationList(detailedMonetaryInformationList);
 
-                    //Segment String here
-                    StringBuilder refundedSegmentString = new StringBuilder();
-                    if(refundedRoute!=null && !refundedRoute.getStation().isEmpty()) {
-                        List<String> stationList = refundedRoute.getStation();
-                        int count = 0;
-                        for (String station : stationList) {
-                            refundedSegmentString.append(station);
-                            if (stationList.get(count + 1) != null) {
-                                refundedSegmentString.append("-");
+                                //Segment String here
+                                StringBuilder refundedSegmentString = new StringBuilder();
+                                if (refundedRoute != null && !refundedRoute.getStation().isEmpty()) {
+                                    List<String> stationList = refundedRoute.getStation();
+                                    int count = 0;
+                                    for (String station : stationList) {
+                                        refundedSegmentString.append(station);
+                                        if (stationList.get(count + 1) != null) {
+                                            refundedSegmentString.append("-");
+                                        }
+                                    }
+                                }
+                                perPaxRefundPricingInformation.setRefundedSegmentString(refundedSegmentString.toString());
+
+                                //Total Refundable details here
+                                BigDecimal refundableAmount = refundable.getAmount();
+                                String refundableCurrency = refundable.getCurrencyCode();
+
+                                perPaxRefundPricingInformation.setRefundedAmount(refundableAmount);
+                                perPaxRefundPricingInformation.setRefundedAmountCurrency(refundableCurrency);
+
+
+                                //Setting ticket number here
+                                DocumentAndCouponInformationType documentAndCouponInformationType = documentAndCouponInformation.get(0);
+                                String ticketNumber = insertHyphenAfterThreeChars(documentAndCouponInformationType.getDocumentNumber().getNumber());
+                                perPaxRefundPricingInformation.setTicketNumber(ticketNumber);
+
                             }
                         }
                     }
-                    perPaxRefundPricingInformation.setRefundedSegmentString(refundedSegmentString.toString());
 
-                    //Total Refundable details here
-                    BigDecimal refundableAmount = refundable.getAmount();
-                    String refundableCurrency = refundable.getCurrencyCode();
-
-                    perPaxRefundPricingInformation.setRefundedAmount(refundableAmount);
-                    perPaxRefundPricingInformation.setRefundedAmountCurrency(refundableCurrency);
-
-
-                    //Setting ticket number here
-                    DocumentAndCouponInformationType documentAndCouponInformationType = documentAndCouponInformation.get(0);
-                    String ticketNumber = insertHyphenAfterThreeChars(documentAndCouponInformationType.getDocumentNumber().getNumber());
-                    perPaxRefundPricingInformation.setTicketNumber(ticketNumber);
-
+                    perPaxRefundPricingInformationList.add(perPaxRefundPricingInformation);
                 }
-
-                perPaxRefundPricingInformationList.add(perPaxRefundPricingInformation);
             }
         } catch (Exception e) {
-            logger.debug("Error while extracting reissue pricing information : {} ", e.getMessage(), e);
+            logger.debug("Error while extracting per pax refund pricing information : {} ", e.getMessage(), e);
             e.printStackTrace();
         }
 
