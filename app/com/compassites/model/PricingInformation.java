@@ -189,6 +189,16 @@ public class PricingInformation implements Serializable {
 
     private MnrSearchBaggage mnrSearchBaggage;
 
+    private BigDecimal akbarHoldCharges;
+
+    public BigDecimal getAkbarHoldCharges() {
+        return akbarHoldCharges;
+    }
+
+    public void setAkbarHoldCharges(BigDecimal akbarHoldCharges) {
+        this.akbarHoldCharges = akbarHoldCharges;
+    }
+
     public List<ReIssuePerPaxPricingInfo> getPaxWisePricing() {
         return paxWisePricing;
     }

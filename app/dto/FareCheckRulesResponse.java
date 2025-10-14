@@ -11,6 +11,7 @@ import java.util.Map;
 public class FareCheckRulesResponse implements Serializable {
 
     private List<HashMap> miniRule;
+
     private List<String> detailedRuleList;
 
     @JsonProperty
@@ -19,6 +20,18 @@ public class FareCheckRulesResponse implements Serializable {
 
     private List<FareType> fareTypes;
 
+    private Map<String, Map<String,List<String>>> ruleMap;
+
+    private String errorMessage;
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
     public Map<String, Map<String, List<String>>> getRuleMap() {
         return ruleMap;
     }
@@ -26,8 +39,6 @@ public class FareCheckRulesResponse implements Serializable {
     public void setRuleMap(Map<String, Map<String, List<String>>> ruleMap) {
         this.ruleMap = ruleMap;
     }
-
-    private Map<String, Map<String,List<String>>> ruleMap;
 
     public List<HashMap> getMiniRule() {
         return miniRule;

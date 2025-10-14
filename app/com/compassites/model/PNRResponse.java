@@ -1,6 +1,7 @@
 package com.compassites.model;
 
 import com.compassites.model.amadeus.AmadeusPaxInformation;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import dto.*;
 
 import java.io.Serializable;
@@ -12,6 +13,7 @@ import java.util.Map;
 /**
  * Created by user on 18-08-2014.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class PNRResponse implements Serializable  {
 
     private  String pnrNumber;

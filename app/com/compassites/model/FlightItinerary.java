@@ -2,17 +2,14 @@ package com.compassites.model;
 
 
 import com.compassites.model.amadeus.reissue.ReIssuePricingInformation;
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 import org.pojomatic.Pojomatic;
 import org.pojomatic.annotations.Property;
 
 import java.io.Serializable;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -140,6 +137,10 @@ public class FlightItinerary implements Serializable{
     private Boolean isRefundable;
 
     private String fareType;
+
+    private String akbarTUI;
+
+    private String akbarHoldTime;
 
     public Boolean getRefundable() {
         return isRefundable;
@@ -387,6 +388,22 @@ public class FlightItinerary implements Serializable{
 
     public void setReturnResultToken(String returnResultToken) {
         this.returnResultToken = returnResultToken;
+    }
+
+    public String getAkbarTUI() {
+        return akbarTUI;
+    }
+
+    public void setAkbarTUI(String akbarTUI) {
+        this.akbarTUI = akbarTUI;
+    }
+
+    public String getAkbarHoldTime() {
+        return akbarHoldTime;
+    }
+
+    public void setAkbarHoldTime(String akbarHoldTime) {
+        this.akbarHoldTime = akbarHoldTime;
     }
 
 }

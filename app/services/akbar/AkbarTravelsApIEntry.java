@@ -1,10 +1,16 @@
 package services.akbar;
 
-import org.springframework.stereotype.Service;
+import com.compassites.model.FlightItinerary;
+import com.compassites.model.traveller.TravellerMasterInfo;
+import dto.FareCheckRulesResponse;
 
-@Service
-public class AkbarTravelsApIEntry {
+import java.util.Map;
 
+public interface AkbarTravelsApIEntry {
+
+    FlightItinerary getFreeBaggageInfo(TravellerMasterInfo travellerMasterInfo);
+
+    Map<String, FareCheckRulesResponse> getFareRuleInfo(TravellerMasterInfo travellerMasterInfo);
 
 
 }

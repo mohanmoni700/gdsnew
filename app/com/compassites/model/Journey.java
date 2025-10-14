@@ -7,6 +7,7 @@ import org.pojomatic.annotations.Property;
 
 import javax.xml.datatype.Duration;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -40,6 +41,39 @@ public class Journey implements Serializable
     private Boolean isRefundable;
 
     private String akbarIndex;
+
+    private int orderId;
+
+    private int availableSeats;
+
+    private String akbarNotice;
+
+    private BigDecimal totalJourneyPrice;
+
+    public BigDecimal getTotalJourneyPrice() {
+        return totalJourneyPrice;
+    }
+
+    public void setTotalJourneyPrice(BigDecimal totalJourneyPrice) {
+        this.totalJourneyPrice = totalJourneyPrice;
+    }
+
+    public int getAvailableSeats() {
+        return availableSeats;
+    }
+
+    public void setAvailableSeats(int availableSeats) {
+        this.availableSeats = availableSeats;
+    }
+
+    public String getAkbarNotice() {
+        return akbarNotice;
+    }
+
+    public void setAkbarNotice(String akbarNotice) {
+        this.akbarNotice = akbarNotice;
+    }
+
 
     public String getFullSegmentKey() {
         return fullSegmentKey;
@@ -290,5 +324,13 @@ public class Journey implements Serializable
 
     public void setRefundable(Boolean refundable) {
         isRefundable = refundable;
+    }
+
+    public int getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(int orderId) {
+        this.orderId = orderId;
     }
 }
