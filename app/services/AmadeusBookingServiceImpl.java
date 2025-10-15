@@ -2104,6 +2104,7 @@ public class AmadeusBookingServiceImpl implements BookingService {
 
     public JsonNode getBookingDetailsByOfficeId(String gdsPNR, String officeId) {
         logger.info("Amadeus getBookingDetailsByOfficeId called for PNR: " + gdsPNR + "--OfficeID: " + officeId);
+        officeId = amadeusSourceOfficeService.getDelhiSourceOffice().getOfficeId();
         AmadeusSessionWrapper sessionWrapper = serviceHandler.logIn(officeId, true);
         return getBookingDetail(gdsPNR, sessionWrapper);
     }
