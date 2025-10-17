@@ -49,7 +49,7 @@ public class AmadeusFlightInfoServiceImpl implements FlightInfoService {
 
     static org.slf4j.Logger logger = LoggerFactory.getLogger("gds");
 
-    private static Map<String, String> baggageCodes = new HashMap<>();
+    static Map<String, String> baggageCodes = new HashMap<>();
 
     private AmadeusSessionManager amadeusSessionManager;
 
@@ -107,6 +107,7 @@ public class AmadeusFlightInfoServiceImpl implements FlightInfoService {
             amadeusSessionWrapper = amadeusSessionManager.getSession(flightSearchOffice);
             List<Journey> journeyList = seamen ? flightItinerary.getJourneyList() : flightItinerary.getNonSeamenJourneyList();
             List<PAXFareDetails> paxFareDetailsList = flightItinerary.getPricingInformation(seamen).getPaxFareDetailsList();
+
             //FareInformativePricingWithoutPNRReply reply = serviceHandler.getFareInfo(journeyList, seamen, searchParams.getAdultCount(), searchParams.getChildCount(), searchParams.getInfantCount(), paxFareDetailsList, amadeusSessionWrapper);
             com.amadeus.xml.tipnrr_13_2_1a.FareInformativePricingWithoutPNRReply fareInformativePricingWithoutPNRReply = serviceHandler.getFareInfo_32(journeyList, seamen, searchParams.getAdultCount(), searchParams.getChildCount(), searchParams.getInfantCount(), paxFareDetailsList, amadeusSessionWrapper);
             List<com.amadeus.xml.tipnrr_13_2_1a.FareInformativePricingWithoutPNRReply.MainGroup.PricingGroupLevelGroup> pricingGroupLevelGroup = fareInformativePricingWithoutPNRReply.getMainGroup().getPricingGroupLevelGroup();

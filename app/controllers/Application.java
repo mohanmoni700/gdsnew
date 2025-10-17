@@ -1,5 +1,6 @@
 package controllers;
 
+import com.compassites.GDSWrapper.amadeus.ServiceHandler;
 import com.compassites.GDSWrapper.mystifly.AirMessageQueue;
 import com.compassites.model.*;
 import com.compassites.model.traveller.TravellerMasterInfo;
@@ -12,6 +13,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.datatype.joda.JodaModule;
 
 import dto.*;
+import dto.Upsell.*;
 import dto.ancillary.AncillaryBookingRequest;
 import dto.ancillary.AncillaryBookingResponse;
 import dto.reissue.ReIssueConfirmationRequest;
@@ -94,6 +96,9 @@ public class Application {
 
     @Autowired
     private UtilService utilService;
+
+    @Autowired
+    private UpsellService upsellService;
 
     static Logger logger = LoggerFactory.getLogger("gds");
     static Logger indigoLogger = LoggerFactory.getLogger("indigo");
@@ -931,5 +936,54 @@ public class Application {
         return Controller.ok(Json.toJson(pnrResponseMap));
     }
 
+    // Free Meals and Seats Confirmation
+    public Result getFreeMealsAndSeatsConfirmation(){
+        JsonNode json = request().body().asJson();
+        TravellerMasterInfo travellerMasterInfo = Json.fromJson(json, TravellerMasterInfo.class);
+        logger.debug("Free Meals and Seats Confirm Request {} ", Json.toJson(travellerMasterInfo));
+        PNRResponse pnrResponse = ancillaryService.getFreeMealsAndSeatsConfirm(travellerMasterInfo);
+        logger.debug("Free Meals and Seats Confirm Response {} ", Json.toJson(pnrResponse));
+        return ok(Json.toJson(pnrResponse));
+    }
+
+
+    // This API is to list available rbd to upsell
+    public Result getAvailableRbdUpsell() {
+
+        JsonNode jsonNode = request().body().asJson();
+
+        RbdUpsellReqDto upsellRequest = Json.fromJson(jsonNode, RbdUpsellReqDto.class);
+
+        Map<String, Map<String, List<String>>> availableRbdMap = upsellService.getRbdUpsellAvailability(upsellRequest);
+
+        return ok(Json.toJson(availableRbdMap));
+    }
+
+    // This API is to get the price, baggage and fareBasis for the selected RBD
+    public Result getRbdUpgradePrice() {
+
+        JsonNode jsonNode = request().body().asJson();
+
+        PriceRbdUpsellDto requestDto = Json.fromJson(jsonNode, PriceRbdUpsellDto.class);
+
+        RbdUpgradePriceResponse responseDto = upsellService.getRbdUpgradePriceDetails(requestDto);
+
+        return ok(Json.toJson((responseDto)));
+
+    }
+
+
+    // This API update the flightItinerary  for the selected RBD
+    public Result updateFlightItineraryForSelectedRbd() {
+
+        JsonNode jsonNode = request().body().asJson();
+
+        PriceRbdUpsellDto rbdRequestDto = Json.fromJson(jsonNode, PriceRbdUpsellDto.class);
+
+        UpdatedItineraryResponse updatedItinerary = upsellService.updateItineraryForSelectedRbd(rbdRequestDto);
+
+        return ok(Json.toJson((updatedItinerary)));
+
+    }
 
 }

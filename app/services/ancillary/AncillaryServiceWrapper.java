@@ -1,6 +1,8 @@
 package services.ancillary;
 
+import com.amadeus.xml.pnracc_14_1_1a.PNRReply;
 import com.compassites.model.AncillaryServicesResponse;
+import com.compassites.model.PNRResponse;
 import dto.ancillary.AncillaryBookingRequest;
 import dto.ancillary.AncillaryBookingResponse;
 import com.compassites.model.traveller.TravellerMasterInfo;
@@ -11,6 +13,7 @@ import services.indigo.IndigoFlightService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -77,4 +80,12 @@ public class AncillaryServiceWrapper implements AncillaryService {
         ancillaryServicesResponse = indigoFlightService.getAvailableAncillaryServices(travellerMasterInfo);
         return ancillaryServicesResponse;
     }
+
+
+    @Override
+    public PNRResponse getFreeMealsAndSeatsConfirm(TravellerMasterInfo travellerMasterInfo) {
+        PNRResponse pnrResponse = amadeusAncillaryService.getFreeMealsAndSeatsConfirm(travellerMasterInfo);
+        return pnrResponse;
+    }
+
 }

@@ -158,6 +158,19 @@
         </encoder>
     </appender>
 
+    <appender name="RUSSIAN_LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${application.home}/logs/akbar.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- Daily rollover with compression -->
+            <fileNamePattern>${application.home}/logs/russian-log-%d{yyyy-MM-dd}.gz</fileNamePattern>
+            <!-- keep 30 days worth of history -->
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{yyyy-MM-dd HH:mm:ss ZZZZ} - [%level] - from %logger in %thread %n%message%n%xException%n</pattern>
+        </encoder>
+    </appender>
+
     <logger name="gds" level="DEBUG" additivity="false">
         <appender-ref ref="SPLIT_TICKET_LOG_FILE" />
     </logger>
@@ -190,6 +203,9 @@
     </logger>
     <logger name="travelomatrix" level="DEBUG" additivity="false">
         <appender-ref ref="TRAVELOMATRIX_LOG_FILE" />
+    </logger>
+    <logger name="russian" level="DEBUG" additivity="false">
+        <appender-ref ref="RUSSIAN_LOG_FILE" />
     </logger>
     <!-- additivity=false ensures access log data only goes to the access log -->
     <logger name="access" level="DEBUG" additivity="false">

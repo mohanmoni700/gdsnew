@@ -5,12 +5,14 @@ import com.compassites.model.amadeus.reissue.ReIssuePricingInformation;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.pojomatic.Pojomatic;
 import org.pojomatic.annotations.Property;
 
 import java.io.Serializable;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -141,6 +143,16 @@ public class FlightItinerary implements Serializable{
     private String akbarTUI;
 
     private String akbarHoldTime;
+
+    // added for russian vendor
+    private String shoppingResponse;
+    private String bookingType;
+
+    private Date sortArrivalDate;
+
+    @JsonProperty("isChecked")
+    private Boolean isChecked;
+
 
     public Boolean getRefundable() {
         return isRefundable;
@@ -406,4 +418,69 @@ public class FlightItinerary implements Serializable{
         this.akbarHoldTime = akbarHoldTime;
     }
 
+    public String getShoppingResponse() {
+        return shoppingResponse;
+    }
+
+    public void setShoppingResponse(String shoppingResponse) {
+        this.shoppingResponse = shoppingResponse;
+
+    }
+    public String getBookingType() {
+        return bookingType;
+    }
+
+    public void setBookingType(String bookingType) {
+        this.bookingType = bookingType;
+    }
+
+    public Date getSortArrivalDate() {
+        return sortArrivalDate;
+    }
+
+    public void setSortArrivalDate(Date sortArrivalDate) {
+        this.sortArrivalDate = sortArrivalDate;
+    }
+
+    public Boolean getChecked() {
+        return isChecked;
+    }
+
+    public void setChecked(Boolean checked) {
+        isChecked = checked;
+    }
+
+    @JsonProperty("isSeamenSelected")
+    private Boolean isSeamenSelected;
+
+    @JsonProperty("isCorporateSelected")
+    private Boolean isCorporateSelected;
+
+
+    private boolean seamen;
+
+
+    public Boolean getSeamenSelected() {
+        return isSeamenSelected;
+    }
+
+    public void setSeamenSelected(Boolean seamenSelected) {
+        isSeamenSelected = seamenSelected;
+    }
+
+    public Boolean getCorporateSelected() {
+        return isCorporateSelected;
+    }
+
+    public void setCorporateSelected(Boolean corporateSelected) {
+        isCorporateSelected = corporateSelected;
+    }
+
+    public boolean isSeamen() {
+        return seamen;
+    }
+
+    public void setSeamen(boolean seamen) {
+        this.seamen = seamen;
+    }
 }

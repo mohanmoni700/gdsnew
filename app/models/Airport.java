@@ -421,4 +421,8 @@ public class Airport extends Model implements Serializable {
 
 	}
 
+	public static Airport findByIataCode(String iataCode) {
+		return find.where().eq("iata_code", iataCode).findList().get(0);
+	}
+
 }

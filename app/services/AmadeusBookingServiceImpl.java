@@ -2685,6 +2685,19 @@ public class AmadeusBookingServiceImpl implements BookingService {
 
     }
 
+    public void addFreeMealsAndSeats(TravellerMasterInfo travellerMasterInfo, int iteration, Date lastPNRAddMultiElements,
+                                    List<String> segmentNumbers, Map<String, String> travellerMap, AmadeusSessionWrapper amadeusSessionWrapper, ServiceHandler serviceHandlerForMeal) throws BaseCompassitesException, InterruptedException {
+        if (iteration <= 3) {
+            PNRReply addSSRResponse = serviceHandlerForMeal.addSSRDetailsToPNR(travellerMasterInfo, segmentNumbers, travellerMap, amadeusSessionWrapper);
+            simultaneousChangeAction(addSSRResponse, serviceHandlerForMeal, lastPNRAddMultiElements, travellerMasterInfo, iteration, segmentNumbers, travellerMap, amadeusSessionWrapper);
+            PNRReply savePNRReply = serviceHandlerForMeal.savePNR(amadeusSessionWrapper);
+            simultaneousChangeAction(savePNRReply, serviceHandlerForMeal, lastPNRAddMultiElements, travellerMasterInfo, iteration, segmentNumbers, travellerMap, amadeusSessionWrapper);
+        } else {
+            serviceHandlerForMeal.ignorePNRAddMultiElement(amadeusSessionWrapper);
+            throw new BaseCompassitesException("Simultaneous changes Error");
+        }
+    }
+
 
 
 }

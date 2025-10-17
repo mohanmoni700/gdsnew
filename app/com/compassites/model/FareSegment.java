@@ -15,6 +15,8 @@ public class FareSegment implements Serializable {
 
     private String availableSeats;
 
+    private String segment;
+
     public String getBookingClass() {
         return bookingClass;
     }
@@ -45,5 +47,13 @@ public class FareSegment implements Serializable {
 
     public void setAvailableSeats(String availableSeats) {
         this.availableSeats = availableSeats;
+    }
+
+    public String getSegment() {
+        return segment;
+    }
+
+    public void setSegment(String segment) {
+        this.segment = segment;
     }
 }

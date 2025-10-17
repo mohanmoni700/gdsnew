@@ -1,6 +1,8 @@
 package services.ancillary;
 
 import com.compassites.model.AncillaryServicesResponse;
+import com.compassites.model.PNRResponse;
+import com.compassites.model.traveller.TravellerMasterInfo;
 import dto.ancillary.AncillaryBookingRequest;
 import dto.ancillary.AncillaryBookingResponse;
 import models.AncillaryServiceRequest;
@@ -18,4 +20,5 @@ public interface AmadeusAncillaryService {
 
     Map<String, List<AncillaryBookingResponse>> getpaymentConfirmAncillaryServices (AncillaryBookingRequest ancillaryBookingRequest);
 
+    PNRResponse getFreeMealsAndSeatsConfirm(TravellerMasterInfo travellerMasterInfo);
 }
