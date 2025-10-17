@@ -1,6 +1,7 @@
 package services;
 
 import com.compassites.GDSWrapper.mystifly.Mystifly;
+import com.compassites.constants.AkbarConstants;
 import com.compassites.constants.IndigoConstants;
 import com.compassites.constants.TraveloMatrixConstants;
 import com.compassites.model.*;
@@ -176,9 +177,11 @@ public class BookingServiceWrapper {
 			pnrResponse =traveloMatrixBookingService.checkFareChangeAndAvailability(travellerMasterInfo);
 		} else if(IndigoConstants.provider.equalsIgnoreCase(provider)) {
 			pnrResponse = indigoFlightService.checkFareChangeAndAvailability(travellerMasterInfo);
-		}
+		} else if (AkbarConstants.provider.equalsIgnoreCase(provider)) {
 
-		return pnrResponse;
+        }
+
+        return pnrResponse;
 	}
 
 	public List<PNRResponse> checkSplitFareAvailability(List<TravellerMasterInfo> travellerMasterInfos) {

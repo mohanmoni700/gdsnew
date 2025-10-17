@@ -1,6 +1,7 @@
 package services.ancillary;
 
 import com.compassites.model.AncillaryServicesResponse;
+import com.compassites.model.PNRResponse;
 import dto.ancillary.AncillaryBookingRequest;
 import dto.ancillary.AncillaryBookingResponse;
 import com.compassites.model.traveller.TravellerMasterInfo;
@@ -17,8 +18,10 @@ public interface AncillaryService {
     AncillaryServicesResponse getAdditionalBaggageInfoStandalone( AncillaryServiceRequest ancillaryServiceRequest);
 
     AncillaryServicesResponse getMealsInfoStandalone( AncillaryServiceRequest ancillaryServiceRequest);
+
     AncillaryServicesResponse getAvailableAncillaryServices(TravellerMasterInfo travellerMasterInfo);
 
     Map<String, List<AncillaryBookingResponse>> getAncillaryBaggageConfirm(AncillaryBookingRequest ancillaryBookingRequest);
 
+    PNRResponse getFreeMealsAndSeatsConfirm(TravellerMasterInfo travellerMasterInfo);
 }

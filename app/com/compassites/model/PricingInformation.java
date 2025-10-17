@@ -41,6 +41,9 @@ public class PricingInformation implements Serializable {
 
     private PreloadedSeamanFareRules preloadedSeamanFareRules;
 
+    private  Map<String , RussianPricingInfo> russianPricingInfoMap;
+
+
 
     @Transient
     private BigDecimal grandTotalDifferenceAmountD;
@@ -59,6 +62,24 @@ public class PricingInformation implements Serializable {
 
     @Transient
     private BigDecimal grandTotalValueM;
+
+    private BigDecimal totalAkbarCommission;
+
+    private BigDecimal totalCostWithAkbarCommission;
+
+    private BigDecimal adtAkbarAgentMarkup;
+
+    private BigDecimal chdAkbarAgentMarkup;
+
+    private BigDecimal infAkbarAgentMarkup;
+
+    private BigDecimal totalAkbarAgentMarkup;
+
+    private BigDecimal totalAdtChangeInFare;
+
+    private BigDecimal totalChdChangeInFare;
+
+    private BigDecimal totalInfChangeInFare;
 
     @Transient
     private List<ReIssuePerPaxPricingInfo> paxWisePricing;
@@ -188,6 +209,16 @@ public class PricingInformation implements Serializable {
     private MnrSearchFareRules mnrSearchFareRules;
 
     private MnrSearchBaggage mnrSearchBaggage;
+
+    private BigDecimal akbarHoldCharges;
+
+    public BigDecimal getAkbarHoldCharges() {
+        return akbarHoldCharges;
+    }
+
+    public void setAkbarHoldCharges(BigDecimal akbarHoldCharges) {
+        this.akbarHoldCharges = akbarHoldCharges;
+    }
 
     public List<ReIssuePerPaxPricingInfo> getPaxWisePricing() {
         return paxWisePricing;
@@ -548,4 +579,84 @@ public class PricingInformation implements Serializable {
     public void setMnrSearchBaggage(MnrSearchBaggage mnrSearchBaggage) {
         this.mnrSearchBaggage = mnrSearchBaggage;
     }
+
+    public Map<String, RussianPricingInfo> getRussianPricingInfoMap() {
+        return russianPricingInfoMap;
+    }
+
+    public void setRussianPricingInfoMap(Map<String, RussianPricingInfo> russianPricingInfoMap) {
+        this.russianPricingInfoMap = russianPricingInfoMap;
+    }
+    public BigDecimal getTotalAkbarCommission() {
+        return totalAkbarCommission;
+    }
+
+    public void setTotalAkbarCommission(BigDecimal totalAkbarCommission) {
+        this.totalAkbarCommission = totalAkbarCommission;
+    }
+
+    public BigDecimal getTotalCostWithAkbarCommission() {
+        return totalCostWithAkbarCommission;
+    }
+
+    public void setTotalCostWithAkbarCommission(BigDecimal totalCostWithAkbarCommission) {
+        this.totalCostWithAkbarCommission = totalCostWithAkbarCommission;
+    }
+
+    public BigDecimal getAdtAkbarAgentMarkup() {
+        return adtAkbarAgentMarkup;
+    }
+
+    public void setAdtAkbarAgentMarkup(BigDecimal adtAkbarAgentMarkup) {
+        this.adtAkbarAgentMarkup = adtAkbarAgentMarkup;
+    }
+
+    public BigDecimal getChdAkbarAgentMarkup() {
+        return chdAkbarAgentMarkup;
+    }
+
+    public void setChdAkbarAgentMarkup(BigDecimal chdAkbarAgentMarkup) {
+        this.chdAkbarAgentMarkup = chdAkbarAgentMarkup;
+    }
+
+    public BigDecimal getInfAkbarAgentMarkup() {
+        return infAkbarAgentMarkup;
+    }
+
+    public void setInfAkbarAgentMarkup(BigDecimal infAkbarAgentMarkup) {
+        this.infAkbarAgentMarkup = infAkbarAgentMarkup;
+    }
+
+    public BigDecimal getTotalAkbarAgentMarkup() {
+        return totalAkbarAgentMarkup;
+    }
+
+    public void setTotalAkbarAgentMarkup(BigDecimal totalAkbarAgentMarkup) {
+        this.totalAkbarAgentMarkup = totalAkbarAgentMarkup;
+    }
+
+    public BigDecimal getTotalAdtChangeInFare() {
+        return totalAdtChangeInFare;
+    }
+
+    public void setTotalAdtChangeInFare(BigDecimal totalAdtChangeInFare) {
+        this.totalAdtChangeInFare = totalAdtChangeInFare;
+    }
+
+    public BigDecimal getTotalChdChangeInFare() {
+        return totalChdChangeInFare;
+    }
+
+    public void setTotalChdChangeInFare(BigDecimal totalChdChangeInFare) {
+        this.totalChdChangeInFare = totalChdChangeInFare;
+    }
+
+    public BigDecimal getTotalInfChangeInFare() {
+        return totalInfChangeInFare;
+    }
+
+    public void setTotalInfChangeInFare(BigDecimal totalInfChangeInFare) {
+        this.totalInfChangeInFare = totalInfChangeInFare;
+    }
+
 }

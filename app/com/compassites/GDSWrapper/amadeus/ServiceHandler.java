@@ -1024,13 +1024,13 @@ public class ServiceHandler {
     }
 
 
-    public AirMultiAvailabilityReply getAirMultiAvailability(AmadeusSessionWrapper amadeusSessionWrapper) {
+    // Lists available rbd for the requested flight itinerary
+    public AirMultiAvailabilityReply getAirMultiAvailability(AmadeusSessionWrapper amadeusSessionWrapper, FlightItinerary flightItinerary, boolean isSeamen) {
 
         amadeusSessionWrapper.incrementSequenceNumber(amadeusSessionWrapper, bindingProvider);
         logger.debug("Amadeus Air MultiAvailability called at {}....................Session Id: {}", new Date(), amadeusSessionWrapper.getSessionId());
 
-        //Create Your request body here
-        AirMultiAvailability airMultiAvailability = new AirMultiAvailability();
+        AirMultiAvailability airMultiAvailability = new UpsellServicesReq().getAvailableRbdUpsell(flightItinerary, isSeamen);
         amadeusLogger.debug("AirMultiAvailability Request : {} SessionId: {} ---->\n{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(airMultiAvailability));
 
         AirMultiAvailabilityReply airMultiAvailabilityReply = mPortType.airMultiAvailability(airMultiAvailability, amadeusSessionWrapper.getmSession(), amadeusSessionWrapper.getTransactionFlowLinkTypeHolder(), amadeusSessionWrapper.getAmaSecurityHostedUser());
@@ -1054,6 +1054,7 @@ public class ServiceHandler {
         return fareConvertCurrencyReply;
     }
 
+    //Price the upsell rbd without PNR
     public FarePriceUpsellWithoutPNRReply upsellWithoutPNR(AmadeusSessionWrapper amadeusSessionWrapper) {
 
         amadeusSessionWrapper.incrementSequenceNumber(amadeusSessionWrapper, bindingProvider);

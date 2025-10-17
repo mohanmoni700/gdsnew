@@ -48,7 +48,7 @@ public class FlightSearchWrapper {
         int maxThreads = 1;
         for(FlightSearch flightSearch : flightSearchList){
             if(flightSearch.getOfficeList() == null || flightSearch.getOfficeList().size() == 0)
-                  maxThreads += 2;
+                  maxThreads += 3;
             else
                 maxThreads += flightSearch.getOfficeList().size();
         }
@@ -169,11 +169,12 @@ public class FlightSearchWrapper {
                     //listIterator.remove();
                     //counter++;
 
-                    if(searchResponse != null && searchResponse.getErrorMessageList().size() == 0){
-                        logger.debug("3-["+redisKey+"]Received Response "+ counter +"  | from : " + searchResponse.getProvider()+  "   | office:"+ searchResponse.getFlightSearchOffice().getOfficeId()  +"  | Seaman size: " + searchResponse.getAirSolution().getSeamenHashMap().size() + " | normal size:"+searchResponse.getAirSolution().getNonSeamenHashMap().size() );
+                    if(searchResponse != null && searchResponse.getFlightSearchOffice() !=null && searchResponse.getErrorMessageList().size() == 0){
+                        //logger.debug("3-["+redisKey+"]Received Response "+ counter +"  | from : " + searchResponse.getProvider()+  "   | office:"+ searchResponse.getFlightSearchOffice().getOfficeId()  +"  | Seaman size: " + searchResponse.getAirSolution().getSeamenHashMap().size() + " | normal size:"+searchResponse.getAirSolution().getNonSeamenHashMap().size() );
                         SearchResponse searchResponseCache=new SearchResponse();
                         searchResponseCache.setFlightSearchOffice(searchResponse.getFlightSearchOffice());
                         searchResponseCache.setProvider(searchResponse.getProvider());
+                        logger.debug("Provider "+searchResponse.getProvider());
                         //logger.debug("counter :"+counter+"Search Response FligthItinary Size: "+searchResponse.getAirSolution().getFlightItineraryList().size());
                         logger.debug("\n\n----------- before MergeResults "+ counter +"--------"+ searchResponse.getFlightSearchOffice().getOfficeId());
                         //AmadeusFlightSearch.printHashmap(hashMap,false);
@@ -295,6 +296,8 @@ public class FlightSearchWrapper {
             System.out.println("Amadeus merge");
         } else if (provider.equalsIgnoreCase("indigo")) {
             System.out.println("Indigo merge");
+        } else if (provider.equalsIgnoreCase("Akbar")) {
+            System.out.println("Akbar merge");
         }
         concurrentHashMap = airSolution.getGroupingKeyMap();
         FlightSearchOffice office = searchResponse.getFlightSearchOffice();

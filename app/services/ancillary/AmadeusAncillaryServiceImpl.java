@@ -2,10 +2,15 @@ package services.ancillary;
 
 import com.amadeus.xml._2010._06.servicebookandprice_v1.AMAServiceBookPriceServiceRS;
 import com.amadeus.xml._2010._06.types_v2.GenericErrorsType;
+import com.amadeus.xml.pnracc_14_1_1a.PNRReply;
 import com.amadeus.xml.tpscgr_17_1_1a.*;
 import com.compassites.GDSWrapper.amadeus.AncillaryPaymentConfirmation;
 import com.compassites.GDSWrapper.amadeus.ServiceHandler;
+import com.compassites.exceptions.BaseCompassitesException;
 import com.compassites.model.*;
+import com.compassites.model.traveller.TravellerMasterInfo;
+import dto.FreeMealsDetails;
+import dto.FreeSeatDetails;
 import dto.ancillary.AncillaryBookingRequest;
 import dto.ancillary.AncillaryBookingResponse;
 import dto.ancillary.AncillarySegmentElementsDto;
@@ -15,6 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Component;
+import services.AmadeusBookingServiceImpl;
+import utils.AmadeusBookingHelper;
 
 import javax.xml.bind.JAXBElement;
 import java.math.BigDecimal;
@@ -107,8 +114,11 @@ public class AmadeusAncillaryServiceImpl implements AmadeusAncillaryService {
             //Saving the response here
             serviceHandler.savePNRForAncillaryServices(amadeusSessionWrapper);
 
+            Map<String, Long> odTicketMap = createOriginDestinationTicketMap(ancillaryBookingRequest);
+            Map<String, String> segmentODMap = createSegmentODMap(ancillaryBookingRequest);
+
             //Mapping amaServiceBookPriceServiceRS here to send to JOCO
-            ancillaryResponseMap = getPaymentConfirmationForAncillaryServices(amaServiceBookPriceServiceRS, confirmPaymentRS);
+            ancillaryResponseMap = getPaymentConfirmationForAncillaryServices(amaServiceBookPriceServiceRS, confirmPaymentRS, odTicketMap , segmentODMap);
 
 
         } catch (Exception e) {
@@ -120,6 +130,75 @@ public class AmadeusAncillaryServiceImpl implements AmadeusAncillaryService {
         }
 
         return ancillaryResponseMap;
+    }
+
+
+
+    private Map<String, String> createSegmentODMap(AncillaryBookingRequest ancillaryBookingRequest) {
+
+        Map<String, String> segmentODMap = new HashMap<>();
+        int baggageCounter = 0;
+        int mealCounter = 0;
+
+        // From baggage details
+        if (ancillaryBookingRequest.getBaggageDetailsList() != null) {
+            for (BaggageDetails baggage : ancillaryBookingRequest.getBaggageDetailsList()) {
+                baggageCounter++;
+                if (baggage.getSegmentTattooList() != null) {
+                    String odKey = baggage.getOrigin() + "-" + baggage.getDestination()+"-"+baggageCounter+"-"+baggage.getCode();
+                    for (String segmentTattoo : baggage.getSegmentTattooList()) {
+                        String segmentKey = segmentTattoo + "-"+baggageCounter;
+                        segmentODMap.put(segmentKey, odKey);
+                    }
+                }
+            }
+        }
+
+        // From meal details
+        if (ancillaryBookingRequest.getMealDetailsList() != null) {
+            for (MealDetails meal : ancillaryBookingRequest.getMealDetailsList()) {
+                mealCounter++;
+                if (meal.getSegmentTattoo() != null) {
+                    String odKey = meal.getOrigin() + "-" + meal.getDestination()+"-"+mealCounter+"-"+meal.getMealCode();
+                    String segmentTattoo = meal.getSegmentTattoo()+"-"+mealCounter;
+                    segmentODMap.put(segmentTattoo, odKey);
+                }
+            }
+        }
+
+        return segmentODMap;
+
+    }
+
+    private Map<String, Long> createOriginDestinationTicketMap(AncillaryBookingRequest ancillaryBookingRequest) {
+
+        Map<String, Long> odTicketMap = new HashMap<>();
+        int baggageCounter = 0;
+        int mealCounter = 0;
+        // Map baggage details
+        if (ancillaryBookingRequest.getBaggageDetailsList() != null) {
+            for (BaggageDetails baggage : ancillaryBookingRequest.getBaggageDetailsList()) {
+                if (baggage.getOrigin() != null && baggage.getDestination() != null && baggage.getTicketId() != null) {
+                    baggageCounter++;
+                    String key = baggage.getOrigin() + "-" + baggage.getDestination()+"-"+baggageCounter+"-"+baggage.getCode();
+                    odTicketMap.put(key, baggage.getTicketId());
+                }
+            }
+        }
+
+        // Map meal details (if they have origin-destination)
+        if (ancillaryBookingRequest.getMealDetailsList() != null) {
+            for (MealDetails meal : ancillaryBookingRequest.getMealDetailsList()) {
+                if (meal.getOrigin() != null && meal.getDestination() != null && meal.getTicketId() != null) {
+                    mealCounter++;
+                    String key = meal.getOrigin() + "-" + meal.getDestination()+"-"+mealCounter+"-"+meal.getMealCode();
+                    odTicketMap.put(key, meal.getTicketId());
+                }
+            }
+        }
+
+        return odTicketMap;
+
     }
 
     //Baggage for only F type is being retrieved here (Uses Standalone Catalogue) -> Journey Wise Baggage Response
@@ -551,7 +630,7 @@ public class AmadeusAncillaryServiceImpl implements AmadeusAncillaryService {
     }
 
     //Ancillary Services (Meal And Baggage) Booking confirmation is done here
-    private static Map<String, List<AncillaryBookingResponse>> getPaymentConfirmationForAncillaryServices(AMAServiceBookPriceServiceRS amaServiceBookPriceServiceRS, AncillaryBookingResponse confirmPaymentRS) {
+    private static Map<String, List<AncillaryBookingResponse>> getPaymentConfirmationForAncillaryServices(AMAServiceBookPriceServiceRS amaServiceBookPriceServiceRS, AncillaryBookingResponse confirmPaymentRS, Map<String, Long> odTicketMap, Map<String, String> segmentODMap) {
 
         try {
 
@@ -599,7 +678,7 @@ public class AmadeusAncillaryServiceImpl implements AmadeusAncillaryService {
                     }
                 }
 
-
+                int counter = 1;
                 if (serviceList != null && !serviceList.isEmpty()) {
                     for (AMAServiceBookPriceServiceRS.Success.Services.Service service : serviceList) {
 
@@ -616,6 +695,12 @@ public class AmadeusAncillaryServiceImpl implements AmadeusAncillaryService {
                         List<String> segmentRefId = service.getSegmentRefId();
                         if (segmentRefId != null && !segmentRefId.isEmpty()) {
                             ancillaryBookingDetails.setSegmentRefId(segmentRefId.get(0));
+                            String segmentKey = segmentRefId.get(0) + "-" + counter;
+                            String odKey = segmentODMap.get(segmentKey);
+                            if (odKey != null && odTicketMap.containsKey(odKey)) {
+                                ancillaryBookingDetails.setTicketId(odTicketMap.get(odKey));
+                            }
+
                         }
 
                         // ✅ Match quotation for this service
@@ -637,6 +722,7 @@ public class AmadeusAncillaryServiceImpl implements AmadeusAncillaryService {
                             newList.add(ancillaryBookingDetails);
                             ancillaryBookingResponseMap.put(ancillaryBookingDetails.getAmadeusPaxRef(), newList);
                         }
+                        counter++;
                     }
                 }
 
@@ -1065,5 +1151,66 @@ public class AmadeusAncillaryServiceImpl implements AmadeusAncillaryService {
             }
         }
     }
+
+    @Override
+    public PNRResponse getFreeMealsAndSeatsConfirm(TravellerMasterInfo travellerMasterInfo) {
+
+        PNRReply gdsPNRReply;
+        ServiceHandler serviceHandler;
+        AmadeusSessionWrapper amadeusSessionWrapper;
+
+        try {
+            serviceHandler = new ServiceHandler();
+            amadeusSessionWrapper = serviceHandler.logIn(true);
+             gdsPNRReply = serviceHandler.retrievePNR(travellerMasterInfo.getGdsPNR(), amadeusSessionWrapper);
+             PNRResponse pnrResponse = new PNRResponse();
+
+            Date lastPNRAddMultiElements = new Date();
+
+            List<String> segmentNumbers = new ArrayList<>();
+            for (PNRReply.OriginDestinationDetails originDestinationDetails : gdsPNRReply.getOriginDestinationDetails()) {
+                for (PNRReply.OriginDestinationDetails.ItineraryInfo itineraryInfo : originDestinationDetails.getItineraryInfo()) {
+                    segmentNumbers.add("" + itineraryInfo.getElementManagementItinerary().getReference().getNumber());
+                }
+            }
+            Map<String, String> travellerMap = new HashMap<>();
+            for (PNRReply.TravellerInfo travellerInfo : gdsPNRReply.getTravellerInfo()) {
+                String keyNo = "" + travellerInfo.getElementManagementPassenger().getReference().getNumber();
+                String lastName = travellerInfo.getPassengerData().get(0).getTravellerInformation().getTraveller().getSurname();
+                String name = travellerInfo.getPassengerData().get(0).getTravellerInformation().getPassenger().get(0).getFirstName();
+                String travellerName = name + lastName;
+                travellerName = travellerName.replaceAll("\\s+", "");
+                travellerName = travellerName.toLowerCase();
+                travellerMap.put(travellerName, keyNo);
+            }
+            AmadeusBookingServiceImpl amadeusBookingService = new AmadeusBookingServiceImpl();
+            amadeusBookingService.addFreeMealsAndSeats(travellerMasterInfo, 1, lastPNRAddMultiElements, segmentNumbers, travellerMap, amadeusSessionWrapper, serviceHandler);
+
+            gdsPNRReply = serviceHandler.retrievePNR(travellerMasterInfo.getGdsPNR(), amadeusSessionWrapper);
+
+            List<FreeMealsDetails> freeMealsInfoFromPnr = AmadeusBookingHelper.getFreeMealsInfoFromPnr(gdsPNRReply);
+
+            List<FreeSeatDetails> freeSeatDetailsFromPnr = AmadeusBookingHelper.getFreeSeatDetailsFromPnr(gdsPNRReply);
+
+            if(freeMealsInfoFromPnr != null && !freeMealsInfoFromPnr.isEmpty()){
+                pnrResponse.setFreeMealsList(freeMealsInfoFromPnr);
+            }
+
+            if(freeSeatDetailsFromPnr != null && !freeSeatDetailsFromPnr.isEmpty()){
+                pnrResponse.setFreeSeatList(freeSeatDetailsFromPnr);
+            }
+
+            return pnrResponse;
+
+
+        } catch (Exception e) {
+            logger.debug("Error with Free Meals and Seats confirmation : {} ", e.getMessage(), e);
+            return null;
+        }
+
+
+    }
+
+
 
 }

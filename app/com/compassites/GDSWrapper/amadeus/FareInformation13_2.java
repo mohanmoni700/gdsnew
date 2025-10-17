@@ -3,7 +3,9 @@ package com.compassites.GDSWrapper.amadeus;
 import java.math.BigInteger;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.amadeus.xml.tipnrq_13_2_1a.*;
 import com.amadeus.xml.tipnrq_13_2_1a.FareInformativePricingWithoutPNR.PassengersGroup;
@@ -78,7 +80,20 @@ public class FareInformation13_2 {
             dateFormat.setTimeZone(dateTimeZone.toTimeZone());
             String dateString = dateFormat.format(departureTime.toDate());
             flightDate.setDepartureDate(dateString);
+
+            String arrivalDateStr = airSegment.getArrivalTime();
+            String arrivalZone = airSegment.getToAirport().getTime_zone();
+            DateTimeZone arrivalTimeZone  = DateTimeZone.forID(arrivalZone);
+            DateTime arrivalTime = new DateTime(arrivalDateStr).withZone(arrivalTimeZone);
+
+            SimpleDateFormat arrivaldateFormat = new SimpleDateFormat("ddMMyy");
+            arrivaldateFormat.setTimeZone(arrivalTimeZone.toTimeZone());
+            String arrivalDateString = arrivaldateFormat.format(arrivalTime.toDate());
+            flightDate.setArrivalDate(arrivalDateString);
+
             segmentInformation.setFlightDate(flightDate);
+
+
 
             /*Board point details*/
             boardPointDetails.setTrueLocationId(airSegment.getFromLocation());
@@ -147,13 +162,21 @@ public class FareInformation13_2 {
         */
         return fareInfo;
     }
-    private PassengersGroup getPaxGroup(PassengerTypeCode passengerType,
-                                              int passengerQuantity) {
+    private PassengersGroup getPaxGroup(PassengerTypeCode passengerType, int passengerQuantity) {
         PassengersGroup passengerGroup = new PassengersGroup();
 
         SegmentRepetitionControlTypeI segmentRepetitionControl = new SegmentRepetitionControlTypeI();
         SegmentRepetitionControlDetailsTypeI segmentRepetitionControlDetails = new SegmentRepetitionControlDetailsTypeI();
-        segmentRepetitionControlDetails.setQuantity(BigInteger.valueOf(1));
+        if(passengerType.name().equalsIgnoreCase("ADT") || passengerType.name().equalsIgnoreCase("SEA")) {
+            segmentRepetitionControlDetails.setQuantity(BigInteger.valueOf(1));
+        }
+        if(passengerType.name().equalsIgnoreCase("CHD")){
+            segmentRepetitionControlDetails.setQuantity(BigInteger.valueOf(2));
+        }
+        if(passengerType.name().equalsIgnoreCase("INF")){
+            segmentRepetitionControlDetails.setQuantity(BigInteger.valueOf(3));
+        }
+
         segmentRepetitionControlDetails.setNumberOfUnits(BigInteger.valueOf(1));
         segmentRepetitionControl.getSegmentControlDetails().add(
                 segmentRepetitionControlDetails);
@@ -161,7 +184,7 @@ public class FareInformation13_2 {
 
         SpecificTravellerTypeI specificTraveller = new SpecificTravellerTypeI();
         SpecificTravellerDetailsTypeI specificTravellerDetails = new SpecificTravellerDetailsTypeI();
-        specificTravellerDetails.setMeasurementValue(BigInteger.valueOf(passengerQuantity));
+//        specificTravellerDetails.setMeasurementValue(BigInteger.valueOf(passengerQuantity));
         specificTraveller.getTravellerDetails().add(
                 specificTravellerDetails);
         passengerGroup.setTravellersID(specificTraveller);

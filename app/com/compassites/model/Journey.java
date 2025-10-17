@@ -7,6 +7,7 @@ import org.pojomatic.annotations.Property;
 
 import javax.xml.datatype.Duration;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -38,6 +39,41 @@ public class Journey implements Serializable
     private String fullSegmentKey;
 
     private Boolean isRefundable;
+
+    private String akbarIndex;
+
+    private int orderId;
+
+    private int availableSeats;
+
+    private String akbarNotice;
+
+    private BigDecimal totalJourneyPrice;
+
+    public BigDecimal getTotalJourneyPrice() {
+        return totalJourneyPrice;
+    }
+
+    public void setTotalJourneyPrice(BigDecimal totalJourneyPrice) {
+        this.totalJourneyPrice = totalJourneyPrice;
+    }
+
+    public int getAvailableSeats() {
+        return availableSeats;
+    }
+
+    public void setAvailableSeats(int availableSeats) {
+        this.availableSeats = availableSeats;
+    }
+
+    public String getAkbarNotice() {
+        return akbarNotice;
+    }
+
+    public void setAkbarNotice(String akbarNotice) {
+        this.akbarNotice = akbarNotice;
+    }
+
 
     public String getFullSegmentKey() {
         return fullSegmentKey;
@@ -79,6 +115,36 @@ public class Journey implements Serializable
     private String groupingKey;
 
     private String fareDescription;
+
+    private String marketingCarrier;
+
+    private String operatingCarrier;
+
+    public String getMarketingCarrier() {
+        return marketingCarrier;
+    }
+
+    public void setMarketingCarrier(String marketingCarrier) {
+        this.marketingCarrier = marketingCarrier;
+    }
+
+    public String getOperatingCarrier() {
+        return operatingCarrier;
+    }
+
+    public void setOperatingCarrier(String operatingCarrier) {
+        this.operatingCarrier = operatingCarrier;
+    }
+
+    public String getValidatingCarrier() {
+        return validatingCarrier;
+    }
+
+    public void setValidatingCarrier(String validatingCarrier) {
+        this.validatingCarrier = validatingCarrier;
+    }
+
+    private String validatingCarrier;
 
     private List<String> lastTktDate;
     private boolean seamen;
@@ -132,6 +198,14 @@ public class Journey implements Serializable
 
     public void setGroupingKey(String groupingKey) {
         this.groupingKey = groupingKey;
+    }
+
+    public String getAkbarIndex() {
+        return akbarIndex;
+    }
+
+    public void setAkbarIndex(String akbarIndex) {
+        this.akbarIndex = akbarIndex;
     }
 
     public Integer getHashCode() {
@@ -250,5 +324,13 @@ public class Journey implements Serializable
 
     public void setRefundable(Boolean refundable) {
         isRefundable = refundable;
+    }
+
+    public int getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(int orderId) {
+        this.orderId = orderId;
     }
 }

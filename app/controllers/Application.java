@@ -1,5 +1,6 @@
 package controllers;
 
+import com.compassites.GDSWrapper.amadeus.ServiceHandler;
 import com.compassites.GDSWrapper.mystifly.AirMessageQueue;
 import com.compassites.model.*;
 import com.compassites.model.traveller.TravellerMasterInfo;
@@ -12,6 +13,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.datatype.joda.JodaModule;
 
 import dto.*;
+import dto.Upsell.*;
 import dto.ancillary.AncillaryBookingRequest;
 import dto.ancillary.AncillaryBookingResponse;
 import dto.reissue.ReIssueConfirmationRequest;
@@ -94,6 +96,9 @@ public class Application {
 
     @Autowired
     private UtilService utilService;
+
+    @Autowired
+    private UpsellService upsellService;
 
     static Logger logger = LoggerFactory.getLogger("gds");
     static Logger indigoLogger = LoggerFactory.getLogger("indigo");
@@ -261,20 +266,22 @@ public class Application {
         SearchParameters searchParams = Json.fromJson(json.findPath("searchParams"), SearchParameters.class);
         FlightItinerary flightItinerary = Json.fromJson(json.findPath("flightItinerary"), FlightItinerary.class);
         String provider = json.get("provider").asText();
+        Long crewOpId = Json.fromJson(json.findPath("crewOpId"), Long.class);
         Boolean seamen = Json.fromJson(json.findPath("travellerInfo").findPath("seamen"), Boolean.class);
         int adultCount = Json.fromJson(json.findPath("travellerInfo").findPath("adultCount"), Integer.class);
         int childCount = Json.fromJson(json.findPath("travellerInfo").findPath("childCount"), Integer.class);
         int infantCount = Json.fromJson(json.findPath("travellerInfo").findPath("infantCount"), Integer.class);
 
         TravellerMasterInfo travellerMasterInfo = new TravellerMasterInfo();
+        travellerMasterInfo.setCrewOpId(crewOpId);
         travellerMasterInfo.setAdtultCount(adultCount);
         travellerMasterInfo.setChildCount(childCount);
         travellerMasterInfo.setInfantCount(infantCount);
         travellerMasterInfo.setSeamen(seamen);
-    	FlightItinerary response = null;
-    	try {
-            logger.info("Baggage info "+Json.toJson(flightItinerary));
-            response = flightInfoService.getBaggageInfo(flightItinerary, searchParams, provider, seamen,travellerMasterInfo);
+        FlightItinerary response = null;
+        try {
+            logger.info("Baggage info " + Json.toJson(flightItinerary));
+            response = flightInfoService.getBaggageInfo(flightItinerary, searchParams, provider, seamen, travellerMasterInfo);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -304,8 +311,9 @@ public class Application {
             FlightItinerary flightItinerary = Json.fromJson(json.findPath("flightItinerary"), FlightItinerary.class);
             String provider = json.get("provider").asText();
             Boolean seamen = Json.fromJson(json.findPath("travellerInfo").findPath("seamen"), Boolean.class);
+            Long crewOpId = Json.fromJson(json.findPath("userId"), Long.class);
 
-            fareCheckRulesJson = flightInfoService.getGenericFareRuleFlightItinerary(flightItinerary, searchParams, seamen, provider);
+            fareCheckRulesJson = flightInfoService.getGenericFareRuleFlightItinerary(flightItinerary, searchParams, seamen, provider, crewOpId);
 
         } catch (Exception e) {
             logger.debug("Error getting MiniRule From FlightItinerary API {} ", e.getMessage(), e);
@@ -442,7 +450,7 @@ public class Application {
     public Result commitBooking() {
         logger.info("commitBooking called ");
         JsonNode json = request().body().asJson();
-        logger.info("commitBooking called json "+json.toString());
+        logger.info("commitBooking called json " + json.toString());
         IssuanceRequest issuanceRequest = Json.fromJson(json, IssuanceRequest.class);
         IssuanceResponse issuanceResponse = traveloMatrixBookingService.commitBooking(issuanceRequest);
         logger.info("commitBooking response " + Json.toJson(issuanceResponse));
@@ -489,7 +497,7 @@ public class Application {
     public Result cancelTimeLimitReachedPNR() {
         logger.info("cancelTimeLimitReachedPNR called ");
         JsonNode json = request().body().asJson();
-        logger.debug("json "+json.toString());
+        logger.debug("json " + json.toString());
         String pnr = Json.fromJson(json.findPath("gdsPNR"), String.class);
         String provider = Json.fromJson(json.findPath("provider"), String.class);
         String appRef = Json.fromJson(json.findPath("appRef"), String.class);
@@ -711,7 +719,7 @@ public class Application {
         String searchOfficeId = json.get("searchOffice").asText();
         String ticketingOfficeId = json.get("ticketingOfficeId").asText();
         TravellerMasterInfo travellerMasterInfo = Json.fromJson(json.findPath("masterInfo"), TravellerMasterInfo.class);
-        ticketProcessRefundRes = refundServiceWrapper.processFullRefund(provider, gdspnr, searchOfficeId, ticketingOfficeId,travellerMasterInfo);
+        ticketProcessRefundRes = refundServiceWrapper.processFullRefund(provider, gdspnr, searchOfficeId, ticketingOfficeId, travellerMasterInfo);
         return ok(Json.toJson(ticketProcessRefundRes));
     }
 
@@ -732,12 +740,12 @@ public class Application {
         }
         JsonNode ticketIds = json.get("ticketIds");
         List<String> ticketIdsList = new LinkedList<>();
-        if(ticketIds != null && ticketIds.isArray()){
-            for(JsonNode ticketIdNode : ticketIds){
+        if (ticketIds != null && ticketIds.isArray()) {
+            for (JsonNode ticketIdNode : ticketIds) {
                 ticketIdsList.add(ticketIdNode.asText());
             }
         }
-        ticketCheckEligibilityRes = refundServiceWrapper.checkPartRefundTicketEligibility(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId,ticketIdsList);
+        ticketCheckEligibilityRes = refundServiceWrapper.checkPartRefundTicketEligibility(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId, ticketIdsList);
         return ok(Json.toJson(ticketCheckEligibilityRes));
     }
 
@@ -762,10 +770,12 @@ public class Application {
         ObjectMapper mapper = new ObjectMapper();
         List<IndigoPaxNumber> indigoPaxNumbers = mapper.convertValue(
                 indigoPaxNumbersNode,
-                new TypeReference<List<IndigoPaxNumber>>() {}
+                new TypeReference<List<IndigoPaxNumber>>() {
+                }
         );
 
         ticketProcessRefundRes = refundServiceWrapper.processPartialRefund(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId,indigoPaxNumbers, travellerMasterInfo);
+        logger.debug("Ticket process refund response {} ", Json.toJson(ticketProcessRefundRes));
         return ok(Json.toJson(ticketProcessRefundRes));
     }
 
@@ -782,7 +792,7 @@ public class Application {
     }
 
 
-    ///Amadeus Ancillary - Baggage
+    /// Amadeus Ancillary - Baggage
     @BodyParser.Of(BodyParser.Json.class)
     public Result addAdditionalBaggageRequestStandalone() {
 
@@ -797,7 +807,7 @@ public class Application {
     }
 
 
-    ///Amadeus Ancillary - Meals
+    /// Amadeus Ancillary - Meals
     @BodyParser.Of(BodyParser.Json.class)
     public Result addMealsRequestStandalone() {
 
@@ -912,19 +922,68 @@ public class Application {
 
 
     //    AirlineWise Time Limit
-    public Result getAirlineWiseTimeLimit(){
+    public Result getAirlineWiseTimeLimit() {
         JsonNode json = request().body().asJson();
-        logger.debug("-----------------  getAirlineWiseTimeLimit Request: "+json);
+        logger.debug("-----------------  getAirlineWiseTimeLimit Request: " + json);
 
         List<String> gdsPnrList = new ArrayList<>();
         for (JsonNode node : json.get("gdsPNRList")) {
             gdsPnrList.add(node.asText());
         }
 
-        Map<String , PNRResponse> pnrResponseMap  = bookingService.airlineWiseTimeLimit(gdsPnrList);
-        logger.debug("-----------------PNR Response: "+Json.toJson(pnrResponseMap));
+        Map<String, PNRResponse> pnrResponseMap = bookingService.airlineWiseTimeLimit(gdsPnrList);
+        logger.debug("-----------------PNR Response: " + Json.toJson(pnrResponseMap));
         return Controller.ok(Json.toJson(pnrResponseMap));
     }
 
+    // Free Meals and Seats Confirmation
+    public Result getFreeMealsAndSeatsConfirmation(){
+        JsonNode json = request().body().asJson();
+        TravellerMasterInfo travellerMasterInfo = Json.fromJson(json, TravellerMasterInfo.class);
+        logger.debug("Free Meals and Seats Confirm Request {} ", Json.toJson(travellerMasterInfo));
+        PNRResponse pnrResponse = ancillaryService.getFreeMealsAndSeatsConfirm(travellerMasterInfo);
+        logger.debug("Free Meals and Seats Confirm Response {} ", Json.toJson(pnrResponse));
+        return ok(Json.toJson(pnrResponse));
+    }
+
+
+    // This API is to list available rbd to upsell
+    public Result getAvailableRbdUpsell() {
+
+        JsonNode jsonNode = request().body().asJson();
+
+        RbdUpsellReqDto upsellRequest = Json.fromJson(jsonNode, RbdUpsellReqDto.class);
+
+        Map<String, Map<String, List<String>>> availableRbdMap = upsellService.getRbdUpsellAvailability(upsellRequest);
+
+        return ok(Json.toJson(availableRbdMap));
+    }
+
+    // This API is to get the price, baggage and fareBasis for the selected RBD
+    public Result getRbdUpgradePrice() {
+
+        JsonNode jsonNode = request().body().asJson();
+
+        PriceRbdUpsellDto requestDto = Json.fromJson(jsonNode, PriceRbdUpsellDto.class);
+
+        RbdUpgradePriceResponse responseDto = upsellService.getRbdUpgradePriceDetails(requestDto);
+
+        return ok(Json.toJson((responseDto)));
+
+    }
+
+
+    // This API update the flightItinerary  for the selected RBD
+    public Result updateFlightItineraryForSelectedRbd() {
+
+        JsonNode jsonNode = request().body().asJson();
+
+        PriceRbdUpsellDto rbdRequestDto = Json.fromJson(jsonNode, PriceRbdUpsellDto.class);
+
+        UpdatedItineraryResponse updatedItinerary = upsellService.updateItineraryForSelectedRbd(rbdRequestDto);
+
+        return ok(Json.toJson((updatedItinerary)));
+
+    }
 
 }

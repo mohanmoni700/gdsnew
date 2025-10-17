@@ -66,6 +66,7 @@ POST  /processPartialRefund         @controllers.Application.processPartialRefun
 
 
 
+
 #Ancillary
 #POST /showAdditionalBaggageInfo     @controllers.Application.addAdditionalBaggageRequest()
 POST  /fetchTmxExtraServices              @controllers.Application.fetchTmxExtraServices()
@@ -73,6 +74,7 @@ POST /showAdditionalBaggageInfoStandalone  @controllers.Application.addAdditiona
 POST /showMealsInfoStandalone             @controllers.Application.addMealsRequestStandalone()
 POST /getAvailableAncillaryServices            @controllers.Application.getAvailableAncillaryServices()
 POST /confirmAncillaryPayment             @controllers.Application.getAncillaryBaggagePaymentConfirmation()
+POST /confirmFreeMealsAndSeats         @controllers.Application.getFreeMealsAndSeatsConfirmation()
 
 #Report
 POST    /openTicketReport   @controllers.Application.openTicketReport()
@@ -86,3 +88,10 @@ POST    /getAmadeusExchangeRates   @controllers.Application.getAmadeusExchangeRa
 
 #AirlineTimeLimit
 POST    /getAirlineWiseTimeLimit   @controllers.Application.getAirlineWiseTimeLimit()
+
+
+#Upsell
+POST  /getAvailableRbdUpsell       @controllers.Application.getAvailableRbdUpsell()
+POST /getRbdUpgradePrice           @controllers.Application.getRbdUpgradePrice()
+POST /updateFlightItineraryForSelectedRbd   @controllers.Application.updateFlightItineraryForSelectedRbd()
+

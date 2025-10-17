@@ -305,11 +305,14 @@ public class AmadeusFlightSearch implements FlightSearch {
                     flightItinerary.getPricingInformation().setGdsCurrency(currency);
                     flightItinerary.getPricingInformation().setPricingOfficeId(office.getOfficeId());
 
-                    flightItinerary.getPricingInformation().setPaxFareDetailsList(createFareDetails(recommendation, flightItinerary.getJourneyList()));
+//                    flightItinerary.getPricingInformation().setPaxFareDetailsList(createFareDetails(recommendation, flightItinerary.getJourneyList()));
 
                     List<String> contextList = getAvailabilityCtx(segmentRef, recommendation.getSpecificRecDetails());
 
                     flightItinerary = createJourneyInformation(segmentRef, flightItinerary, flightIndexList, recommendation, contextList, isSeamen, validatingCarrierCode);
+
+                    flightItinerary.getPricingInformation().setPaxFareDetailsList(createFareDetails(recommendation, flightItinerary.getJourneyList()));
+
 
                     if (!isSeamen) {
                         if (recommendation.getFareFamilyRef() != null && !recommendation.getFareFamilyRef().getReferencingDetail().isEmpty()) {
@@ -842,27 +845,81 @@ public class AmadeusFlightSearch implements FlightSearch {
     }
 
 
+
     private List<PAXFareDetails> createFareDetails(Recommendation recommendation, List<Journey> journeys) {
         List<PAXFareDetails> paxFareDetailsList = new ArrayList<>();
+
+//        fetch segmentList for all journeys
+        List<String> segmentList = getSegmentListFromJourney(journeys);
+
         for (Recommendation.PaxFareProduct paxFareProduct : recommendation.getPaxFareProduct()) {
             PAXFareDetails paxFareDetails = new PAXFareDetails();
+            int segmentCount = 0;
+
             for (Recommendation.PaxFareProduct.FareDetails fareDetails : paxFareProduct.getFareDetails()) {
                 FareJourney fareJourney = new FareJourney();
+
                 for (Recommendation.PaxFareProduct.FareDetails.GroupOfFares groupOfFares : fareDetails.getGroupOfFares()) {
+
                     FareSegment fareSegment = new FareSegment();
                     fareSegment.setBookingClass(groupOfFares.getProductInformation().getCabinProduct().getRbd());
                     fareSegment.setCabinClass(groupOfFares.getProductInformation().getCabinProduct().getCabin());
                     fareSegment.setAvailableSeats(groupOfFares.getProductInformation().getCabinProduct().getAvlStatus());
-                    paxFareDetails.setPassengerTypeCode(PassengerTypeCode.valueOf(groupOfFares.getProductInformation().getFareProductDetail().getPassengerType()));
+//                    paxFareDetails.setPassengerTypeCode(PassengerTypeCode.valueOf(groupOfFares.getProductInformation().getFareProductDetail().getPassengerType()));
+                    paxFareDetails.setPassengerTypeCode(PassengerTypeCode.valueOf(paxFareProduct.getPaxReference().get(0).getPtc().get(0)));
 
                     fareSegment.setFareBasis(groupOfFares.getProductInformation().getFareProductDetail().getFareBasis());
                     fareJourney.getFareSegmentList().add(fareSegment);
+
+                    if (segmentCount < segmentList.size()) {
+                        fareSegment.setSegment(segmentList.get(segmentCount));
+                    }
+
+                    segmentCount++;
                 }
                 paxFareDetails.getFareJourneyList().add(fareJourney);
             }
             paxFareDetailsList.add(paxFareDetails);
         }
         return paxFareDetailsList;
+    }
+
+//     get segmentList deatils by journeyList
+    private List<String> getSegmentListFromJourney(List<Journey> journeys) {
+        try {
+            List<String> segmentList = new ArrayList<>();
+
+            if (journeys == null || journeys.isEmpty()) {
+                return segmentList;
+            }
+
+            int journeyCount = 1;
+
+            for (Journey journey : journeys) {
+                List<AirSegmentInformation> segments = journey.getAirSegmentList();
+                if (segments == null || segments.isEmpty()) {
+                    journeyCount++;
+                    continue;
+                }
+
+                int segmentCount = 1;
+                for (AirSegmentInformation segment : segments) {
+                    String details =
+//                            journeyCount + "." + segmentCount + ":" +
+                            segment.getFromLocation() + "-"
+                            + segment.getToLocation() + ":"
+                            + segment.getDepartureTime();
+
+                    segmentList.add(details);
+                    segmentCount++;
+                }
+                journeyCount++;
+            }
+
+            return segmentList;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public String getFareBasis(Recommendation.PaxFareProduct.FareDetails fareDetails) {

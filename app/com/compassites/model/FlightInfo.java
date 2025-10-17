@@ -17,7 +17,9 @@ public class FlightInfo {
 
 	private Map<String,Double> carbonDioxide;
 
-	public Map<String, Double> getCarbonDioxide() {
+    private String cabinBaggageAllowance;
+
+    public Map<String, Double> getCarbonDioxide() {
 		return carbonDioxide;
 	}
 
@@ -48,5 +50,13 @@ public class FlightInfo {
 	public void setAmenities(List<String> amenities) {
 		this.amenities = amenities;
 	}
+
+    public String getCabinBaggageAllowance() {
+        return cabinBaggageAllowance;
+    }
+
+    public void setCabinBaggageAllowance(String cabinBaggageAllowance) {
+        this.cabinBaggageAllowance = cabinBaggageAllowance;
+    }
 
 }
