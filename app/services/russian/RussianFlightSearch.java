@@ -13,12 +13,15 @@ import models.FlightSearchOffice;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import play.Play;
 import play.libs.Json;
 import services.FlightSearch;
 import services.RetryOnFailure;
 
+import javax.annotation.Resource;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -31,6 +34,10 @@ public class RussianFlightSearch implements FlightSearch {
 
     static Logger logger = LoggerFactory.getLogger("gds");
     static Logger russianlog = LoggerFactory.getLogger("russian");
+
+    @Resource
+    private RedisTemplate<String, Object> redisTemplate;
+
 
 
     private static final OkHttpClient client = new OkHttpClient.Builder()

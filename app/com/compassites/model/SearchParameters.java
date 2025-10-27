@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.pojomatic.annotations.Property;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -64,6 +65,7 @@ public class SearchParameters implements Serializable,Cloneable{
     private boolean isDomestic;
     private long accountId;
     private long crewOpId;
+    private BigDecimal exchangeRate;
 
     public long getAccountId() {
         return accountId;
@@ -293,6 +295,14 @@ public class SearchParameters implements Serializable,Cloneable{
     public List<String> getPreferredAirlinesList() { return preferredAirlinesList; }
 
     public void setPreferredAirlinesList(List<String> preferredAirlinesList) { this.preferredAirlinesList = preferredAirlinesList; }
+
+    public BigDecimal getExchangeRate() {
+        return exchangeRate;
+    }
+
+    public void setExchangeRate(BigDecimal exchangeRate) {
+        this.exchangeRate = exchangeRate;
+    }
 
     public String redisKey(){
         String key = "";
