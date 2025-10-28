@@ -86,6 +86,13 @@ public class UpsellServiceImpl implements UpsellService{
 
                     List<AirMultiAvailabilityReply.SingleCityPairInfo.FlightInfo> flightInfos = singleCityPair.getFlightInfo();
 
+
+                    if (flightInfos == null || flightInfos.isEmpty()) {
+                        logger.warn("No flight segments found for journey {}-{} in officeId: {}",
+                                journeyOrigin, journeyDestination, officeId);
+                        return null;
+                    }
+
                     if (flightInfos != null && !flightInfos.isEmpty()) {
 
                         // Process each flight segment

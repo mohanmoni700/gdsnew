@@ -1,6 +1,8 @@
 package controllers;
 
 import com.compassites.GDSWrapper.amadeus.ServiceHandler;
+import com.amadeus.xml.pnracc_14_1_1a.PNRReply;
+import com.amadeus.xml.qdqlrr_11_1_1a.QueueListReply;
 import com.compassites.GDSWrapper.mystifly.AirMessageQueue;
 import com.compassites.model.*;
 import com.compassites.model.traveller.TravellerMasterInfo;
@@ -16,6 +18,7 @@ import dto.*;
 import dto.Upsell.*;
 import dto.ancillary.AncillaryBookingRequest;
 import dto.ancillary.AncillaryBookingResponse;
+import dto.queueManagement.*;
 import dto.reissue.ReIssueConfirmationRequest;
 import dto.reissue.ReIssueSearchRequest;
 import models.AncillaryServiceRequest;
@@ -30,6 +33,8 @@ import play.mvc.Controller;
 import play.mvc.Result;
 import services.*;
 
+import services.QueueManagement.QueueManagementService;
+import services.akbar.AkbarTravelsApIEntry;
 import services.ancillary.AncillaryService;
 import services.reissue.ReIssueService;
 
@@ -99,6 +104,12 @@ public class Application {
 
     @Autowired
     private UpsellService upsellService;
+
+    @Autowired
+    QueueManagementService queueManagementService;
+
+    @Autowired
+    private AkbarTravelsApIEntry akbarTravelsApIEntry;
 
     static Logger logger = LoggerFactory.getLogger("gds");
     static Logger indigoLogger = LoggerFactory.getLogger("indigo");
@@ -916,6 +927,72 @@ public class Application {
         return ok(Json.toJson(amadeusExchangeRatesMap));
     }
 
+    public Result getQueueListPnrByOID () {
+
+        try {
+            JsonNode json = request().body().asJson();
+            if (json == null) {
+                logger.warn("Request body is null or not valid JSON");
+                return badRequest("Invalid or missing JSON body");
+            }
+
+            QueueListReqDTO queueListReqDTO = Json.fromJson(json, QueueListReqDTO.class);
+            logger.debug("Received QueueListPnrByOID request: {}", Json.toJson(queueListReqDTO));
+
+            Map<String, PnrQueueDetailsDto> reply = queueManagementService.getQueueListFromRes(queueListReqDTO);
+
+            return ok(Json.toJson(reply));
+        } catch (Exception e) {
+            logger.error("Error in getQueueListPnrByOID", e);
+            return internalServerError("Failed to process request");
+        }
+    }
+
+    public Result getPnrRetrieveDetails () {
+
+        try {
+            JsonNode json = request().body().asJson();
+            if (json == null) {
+                logger.warn("Request is null or not valid JSON");
+                return badRequest("Invalid or missing JSON body");
+            }
+
+            String gdsPnr = json.get("gdsPNR").asText();
+            String officeId = json.get("officeId").asText();
+            ObjectMapper mapper = new ObjectMapper();
+            Map<Integer, String> journeyMap = mapper.convertValue(json.get("journeyMap"), new TypeReference<Map<Integer, String>>() {});
+            TravellerMasterInfo travellerMasterInfo = Json.fromJson(json.findPath("masterInfo"), TravellerMasterInfo.class);
+
+            PnrRetrieveResponseDTO pnrRetrieveResponseDTO = amadeusBookingService.getPnrRetrieveForGdsPnr(gdsPnr,officeId,journeyMap,travellerMasterInfo);
+
+            return ok(Json.toJson(pnrRetrieveResponseDTO));
+        } catch (Exception e) {
+            logger.error("Error in getQueueListPnrByOID", e);
+            return internalServerError("Failed to process request");
+        }
+
+    }
+
+    public Result removeSpecificPnrFromQueue () {
+
+        try {
+            JsonNode json = request().body().asJson();
+            if (json == null) {
+                logger.warn("Not a valid JSON");
+                return badRequest("Invalid or missing JSON body");
+            }
+
+            RemovePnrFomQueueDTO removePnrJson = Json.fromJson(json, RemovePnrFomQueueDTO.class);
+
+            RemovePnrFromQueueRes removePnrFromQueueRes = queueManagementService.removePnr(removePnrJson);
+
+            return ok(Json.toJson(removePnrFromQueueRes));
+        } catch (Exception e) {
+            logger.error("Error in removeSpecificPnrFromQueue", e);
+            return internalServerError("Failed to process request");
+        }
+    }
+
     public Result home() {
         return ok("GDS Service running.....");
     }
@@ -985,5 +1062,21 @@ public class Application {
         return ok(Json.toJson((updatedItinerary)));
 
     }
+
+
+    public Result completePaymentAndIssueTicket() {
+
+        logger.info("GDS Akbar Complete Booking Init");
+        JsonNode jsonNode = request().body().asJson();
+
+        IssuanceRequest issuanceRequest = Json.fromJson(jsonNode, IssuanceRequest.class);
+
+        IssuanceResponse issuanceResponse = akbarTravelsApIEntry.completePaymentAndIssueTicket(issuanceRequest);
+
+        logger.info("GDS Akbar Complete Booking completed");
+        return ok(Json.toJson(issuanceResponse));
+
+    }
+
 
 }

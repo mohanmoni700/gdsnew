@@ -2,6 +2,8 @@ package services.akbar;
 
 import com.compassites.constants.AkbarConstants;
 import com.compassites.model.FlightItinerary;
+import com.compassites.model.IssuanceRequest;
+import com.compassites.model.IssuanceResponse;
 import com.compassites.model.PNRResponse;
 import com.compassites.model.traveller.TravellerMasterInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -98,6 +100,7 @@ public class AkbarTravelsApIEntryImpl implements AkbarTravelsApIEntry {
     }
 
 
+    @Override
     public PNRResponse checkFareChangeAndFlightAvailability(TravellerMasterInfo travellerMasterInfo) {
 
         try {
@@ -126,6 +129,71 @@ public class AkbarTravelsApIEntryImpl implements AkbarTravelsApIEntry {
             logger.error("Error during Fare Change and Flight Availability info retrieval: {}", e.getMessage(), e);
             return null;
         }
+    }
+
+
+    @Override
+    public PNRResponse generatePnr(TravellerMasterInfo travellerMasterInfo) {
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jsonString = objectMapper.writeValueAsString(travellerMasterInfo);
+            RequestBody requestBody = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
+            String url = endPoint + AkbarConstants.generatePnr;
+            Request request = new Request.Builder().url(url).post(requestBody).build();
+
+            akbarLogger.info("Akbar Generate PNR Request: {}", jsonString);
+            logger.info("Akbar Generate PNR Request: {}", jsonString);
+
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful()) {
+                    String responseBody = response.body().string();
+                    PNRResponse pnrResponse = objectMapper.readValue(responseBody, PNRResponse.class);
+                    akbarLogger.debug("Akbar Generate PNR Response: {}", responseBody);
+
+                    return pnrResponse;
+                } else {
+                    logger.error("Failed to Generate PNR from Akbar API: {} for flight itinerary: {}", response.message(), Json.toJson(travellerMasterInfo.getItinerary()));
+                    throw new Exception("Failed to Generate PNR from Akbar API: " + response.message());
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error during Generate PNR: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    @Override
+    public IssuanceResponse completePaymentAndIssueTicket(IssuanceRequest issuanceRequest) {
+
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jsonString = objectMapper.writeValueAsString(issuanceRequest);
+            RequestBody requestBody = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
+            String url = endPoint + AkbarConstants.completePaymentAndIssueTicket;
+            Request request = new Request.Builder().url(url).post(requestBody).build();
+
+            akbarLogger.info("Akbar Complete Payment Request: {}", jsonString);
+            logger.info("Akbar Complete Payment Request: {}", jsonString);
+
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful()) {
+                    String responseBody = response.body().string();
+                    IssuanceResponse issuanceResponse = objectMapper.readValue(responseBody, IssuanceResponse.class);
+                    akbarLogger.debug("Akbar Complete Payment Response: {}", responseBody);
+
+                    return issuanceResponse;
+                } else {
+                    logger.error("Failed to Complete Payment from Akbar API: {} for TUI: {}", response.message(), Json.toJson(issuanceRequest.getAkbarTui()));
+                    throw new Exception("Failed to Complete Payment from Akbar API: " + response.message());
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error during Complete Payment: {}", e.getMessage(), e);
+            return null;
+        }
+
     }
 
 }

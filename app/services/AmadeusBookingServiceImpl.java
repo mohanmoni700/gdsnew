@@ -34,10 +34,11 @@ import com.compassites.model.traveller.PersonalDetails;
 import com.compassites.model.traveller.Preferences;
 import com.compassites.model.traveller.Traveller;
 import com.compassites.model.traveller.TravellerMasterInfo;
-import com.compassites.model.amadeus.AmadeusPaxInformation;
+import com.compassites.model.PaxRefInformation;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import dto.*;
+import dto.queueManagement.PnrRetrieveResponseDTO;
 import dto.reissue.AmadeusPaxRefAndTicket;
 import models.AmadeusSessionWrapper;
 import models.CartAirSegmentDTO;
@@ -61,8 +62,6 @@ import java.math.BigInteger;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static com.compassites.constants.StaticConstatnts.*;
 import static utils.AmadeusBookingHelper.*;
@@ -442,7 +441,7 @@ public class AmadeusBookingServiceImpl implements BookingService {
             pricingInfo.setSegmentWisePricing(false);
             pnrResponse.setPricingInfo(pricingInfo);
             pnrResponse.setPnrNumber(childPNR);
-            pnrResponse.setAmadeusPaxReference(createAmadeusPaxRefInfo(childRetrive));
+            pnrResponse.setPaxRefInformationList(createAmadeusPaxRefInfo(childRetrive));
             pnrResponse.setFreeMealsList(AmadeusBookingHelper.getFreeMealsInfoFromPnr(childRetrive));
             pnrResponse.setFreeSeatList(AmadeusBookingHelper.getFreeSeatDetailsFromPnr(childRetrive));
             pnrResponse.setSegmentRefMap(AmadeusBookingHelper.getSegmentRefMap(childRetrive, childPNR));
@@ -1123,7 +1122,7 @@ public class AmadeusBookingServiceImpl implements BookingService {
         //}
 
         //Creating Amadeus Pax Reference and Line number here
-        pnrResponse.setAmadeusPaxReference(createAmadeusPaxRefInfo(gdsPNRReply));
+        pnrResponse.setPaxRefInformationList(createAmadeusPaxRefInfo(gdsPNRReply));
 
         pnrResponse.setSegmentRefMap(AmadeusBookingHelper.getSegmentRefMap(gdsPNRReply, pnrResponse.getPnrNumber()));
 
@@ -1145,16 +1144,16 @@ public class AmadeusBookingServiceImpl implements BookingService {
         return pnrResponse;
     }
 
-    public static List<AmadeusPaxInformation> createAmadeusPaxRefInfo(PNRReply gdsPNRReply) {
+    public static List<PaxRefInformation> createAmadeusPaxRefInfo(PNRReply gdsPNRReply) {
 
-        List<AmadeusPaxInformation> amadeusPaxInformationList = new ArrayList<>();
+        List<PaxRefInformation> paxRefInformationList = new ArrayList<>();
         List<TravellerInfo> travellerInfoList = gdsPNRReply.getTravellerInfo();
 
         for (PNRReply.TravellerInfo travellerInfo : travellerInfoList) {
-            amadeusPaxInformationList.add(AmadeusBookingHelper.extractPassengerData(travellerInfo));
+            paxRefInformationList.add(AmadeusBookingHelper.extractPassengerData(travellerInfo));
         }
 
-        return amadeusPaxInformationList;
+        return paxRefInformationList;
     }
 
     public void setLastTicketingDate(FarePricePNRWithBookingClassReply pricePNRReply, PNRResponse pnrResponse, TravellerMasterInfo travellerMasterInfo) {
@@ -2696,6 +2695,25 @@ public class AmadeusBookingServiceImpl implements BookingService {
             serviceHandlerForMeal.ignorePNRAddMultiElement(amadeusSessionWrapper);
             throw new BaseCompassitesException("Simultaneous changes Error");
         }
+    }
+
+
+    public PnrRetrieveResponseDTO getPnrRetrieveForGdsPnr(String gdsPnr, String officeId,  Map<Integer, String> journeyMap,TravellerMasterInfo travellerMasterInfo) {
+
+        PNRReply pnrReply = null;
+        AmadeusSessionWrapper amadeusSessionWrapper = null;
+        try {
+            amadeusSessionWrapper = serviceHandler.logIn(officeId,false);
+            pnrReply = serviceHandler.retrievePNR(gdsPnr, amadeusSessionWrapper);
+            PnrRetrieveResponseDTO segmentChanges = AmadeusBookingHelper.retrievePnrForQueues(pnrReply,journeyMap,travellerMasterInfo);
+
+            return segmentChanges;
+
+        } catch (Exception e) {
+            logger.debug("Error While retrieving and comparing the pnr reply {} ", e.getMessage(), e);
+           return null;
+        }
+
     }
 
 

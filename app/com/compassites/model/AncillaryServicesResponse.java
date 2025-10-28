@@ -1,9 +1,12 @@
 package com.compassites.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AncillaryServicesResponse {
 
     private boolean success;

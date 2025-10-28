@@ -81,6 +81,16 @@ public class PricingInformation implements Serializable {
 
     private BigDecimal totalInfChangeInFare;
 
+    private BigDecimal akbarNetAmount;
+
+    public BigDecimal getAkbarNetAmount() {
+        return akbarNetAmount;
+    }
+
+    public void setAkbarNetAmount(BigDecimal akbarNetAmount) {
+        this.akbarNetAmount = akbarNetAmount;
+    }
+
     @Transient
     private List<ReIssuePerPaxPricingInfo> paxWisePricing;
     private Map<String, Object> preloadedSeamanFareRulesMap; // Adjust the type as necessary

@@ -17,7 +17,7 @@ import com.compassites.constants.AmadeusConstants;
 import com.compassites.constants.StaticConstatnts;
 import com.compassites.exceptions.BaseCompassitesException;
 import com.compassites.model.*;
-import com.compassites.model.amadeus.AmadeusPaxInformation;
+import com.compassites.model.PaxRefInformation;
 import com.compassites.model.traveller.Traveller;
 import com.compassites.model.traveller.TravellerMasterInfo;
 import dto.FareCheckRulesResponse;
@@ -542,7 +542,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
 
         String pnr = gdsPNRReply.getPnrHeader().get(0).getReservationInfo().getReservation().get(0).getControlNumber();
         pnrResponse.setPnrNumber(pnr);
-        pnrResponse.setAmadeusPaxReference(createAmadeusPaxRefInfo(gdsPNRReply));
+        pnrResponse.setPaxRefInformationList(createAmadeusPaxRefInfo(gdsPNRReply));
         pnrResponse.setSegmentRefMap(AmadeusBookingHelper.getSegmentRefMap(gdsPNRReply, pnr));
 
         if (pricePNRReply != null) {
@@ -555,16 +555,16 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
         return pnrResponse;
     }
 
-    public static List<AmadeusPaxInformation> createAmadeusPaxRefInfo(PNRReply gdsPNRReply) {
+    public static List<PaxRefInformation> createAmadeusPaxRefInfo(PNRReply gdsPNRReply) {
 
-        List<AmadeusPaxInformation> amadeusPaxInformationList = new ArrayList<>();
+        List<PaxRefInformation> paxRefInformationList = new ArrayList<>();
         List<PNRReply.TravellerInfo> travellerInfoList = gdsPNRReply.getTravellerInfo();
 
         for (PNRReply.TravellerInfo travellerInfo : travellerInfoList) {
-            amadeusPaxInformationList.add(AmadeusBookingHelper.extractPassengerData(travellerInfo));
+            paxRefInformationList.add(AmadeusBookingHelper.extractPassengerData(travellerInfo));
         }
 
-        return amadeusPaxInformationList;
+        return paxRefInformationList;
     }
 
     private void addSSRDetailsToPNR(TravellerMasterInfo travellerMasterInfo, int iteration, Date lastPNRAddMultiElements,

@@ -6,7 +6,9 @@ import dto.reissue.AmadeusPaxRefAndTicket;
 import models.CartAirSegmentDTO;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by Yaseen on 04-12-2014.
@@ -71,6 +73,57 @@ public class IssuanceRequest implements Serializable{
 
     private String expirationDate;
     private boolean isSplitTicket;
+
+    private Long akbarTransactionID;
+
+    Map<String, Long> ODPaxRefTicketSegmentIdMap;
+
+    public Map<String, Long> getODPaxRefTicketSegmentIdMap() {
+        return ODPaxRefTicketSegmentIdMap;
+    }
+
+    public void setODPaxRefTicketSegmentIdMap(Map<String, Long> ODPaxRefTicketSegmentIdMap) {
+        this.ODPaxRefTicketSegmentIdMap = ODPaxRefTicketSegmentIdMap;
+    }
+
+    public Long getAkbarTransactionID() {
+        return akbarTransactionID;
+    }
+
+    public void setAkbarTransactionID(Long akbarTransactionID) {
+        this.akbarTransactionID = akbarTransactionID;
+    }
+
+    public BigDecimal getAkbarNetAmount() {
+        return akbarNetAmount;
+    }
+
+    public void setAkbarNetAmount(BigDecimal akbarNetAmount) {
+        this.akbarNetAmount = akbarNetAmount;
+    }
+
+    private BigDecimal akbarNetAmount;
+
+    private Long crewOpId;
+
+    public Long getCrewOpId() {
+        return crewOpId;
+    }
+
+    public void setCrewOpId(Long crewOpId) {
+        this.crewOpId = crewOpId;
+    }
+
+    private String akbarTui;
+
+    public String getAkbarTui() {
+        return akbarTui;
+    }
+
+    public void setAkbarTui(String akbarTui) {
+        this.akbarTui = akbarTui;
+    }
+
     public boolean isSplitTicket() {
         return isSplitTicket;
     }

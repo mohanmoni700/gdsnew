@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import dto.AddElementsToPnrDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import services.akbar.AkbarTravelsApIEntry;
 import services.indigo.IndigoFlightService;
 import utils.PNRRequest;
 
@@ -47,8 +48,12 @@ public class BookingServiceWrapper {
 
 	@Autowired
 	private SplitTicketBookingService splitTicketBookingService;
+
 	@Autowired
 	private IndigoFlightService indigoFlightService;
+
+    @Autowired
+    private AkbarTravelsApIEntry akbarTravelsApIEntry;
 
 	private LowestFareService amadeusLowestFareService;
 
@@ -91,8 +96,10 @@ public class BookingServiceWrapper {
 			pnrResponse =	traveloMatrixBookingService.generatePNR(travellerMasterInfo);
 		} else if (IndigoConstants.provider.equalsIgnoreCase(provider)) {
 			pnrResponse = indigoFlightService.generatePNR(travellerMasterInfo);
-		}
-		return pnrResponse;
+		} else if (AkbarConstants.provider.equalsIgnoreCase(provider)) {
+            pnrResponse = akbarTravelsApIEntry.generatePnr(travellerMasterInfo);
+        }
+        return pnrResponse;
 	}
 
 	public PNRResponse createTempPNR(TravellerMasterInfo travellerMasterInfo) {
@@ -126,8 +133,10 @@ public class BookingServiceWrapper {
 					.priceChangePNR(travellerMasterInfo);
 		}else if (TraveloMatrixConstants.provider.equalsIgnoreCase(provider)) {
 			pnrResponse = traveloMatrixBookingService.priceChangePNR(travellerMasterInfo);
-		}
-		return pnrResponse;
+		} else if (AkbarConstants.provider.equalsIgnoreCase(provider)) {
+            pnrResponse = akbarTravelsApIEntry.generatePnr(travellerMasterInfo);
+        }
+        return pnrResponse;
 	}
 
 	public IssuanceResponse issueTicket(IssuanceRequest issuanceRequest) {
@@ -178,7 +187,7 @@ public class BookingServiceWrapper {
 		} else if(IndigoConstants.provider.equalsIgnoreCase(provider)) {
 			pnrResponse = indigoFlightService.checkFareChangeAndAvailability(travellerMasterInfo);
 		} else if (AkbarConstants.provider.equalsIgnoreCase(provider)) {
-
+            pnrResponse = akbarTravelsApIEntry.checkFareChangeAndFlightAvailability(travellerMasterInfo);
         }
 
         return pnrResponse;

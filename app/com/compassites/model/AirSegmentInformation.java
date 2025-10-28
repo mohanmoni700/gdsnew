@@ -97,6 +97,16 @@ public class AirSegmentInformation implements Serializable{
 
     private String fareType;
 
+    private String segmentStatus;
+
+    public String getSegmentStatus() {
+        return segmentStatus;
+    }
+
+    public void setSegmentStatus(String segmentStatus) {
+        this.segmentStatus = segmentStatus;
+    }
+
     public String getRuleNumber() {
         return ruleNumber;
     }

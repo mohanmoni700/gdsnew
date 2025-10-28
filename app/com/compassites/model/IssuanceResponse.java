@@ -307,4 +307,15 @@ public class IssuanceResponse implements Serializable{
     public void setFareCheckRulesResponseMap(Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap) {
         this.fareCheckRulesResponseMap = fareCheckRulesResponseMap;
     }
+
+    private Map<Long, String> ticketSegmentIDAndTicketNumberMap;
+
+    public Map<Long, String> getTicketSegmentIDAndTicketNumberMap() {
+        return ticketSegmentIDAndTicketNumberMap;
+    }
+
+    public void setTicketSegmentIDAndTicketNumberMap(Map<Long, String> ticketSegmentIDAndTicketNumberMap) {
+        this.ticketSegmentIDAndTicketNumberMap = ticketSegmentIDAndTicketNumberMap;
+    }
+
 }
