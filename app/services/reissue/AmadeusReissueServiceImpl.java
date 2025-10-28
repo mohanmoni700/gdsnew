@@ -138,6 +138,10 @@ public class AmadeusReissueServiceImpl implements AmadeusReissueService {
 
                             String couponStatus = couponDetails.getCpnStatus();
 
+                            if(couponStatus == null) {
+                                continue;
+                            }
+
                             //If the coupon status is not "I", the ticket is not open for reissue (I = Open Ticket)
                             if (!"I".equalsIgnoreCase(couponStatus)) {
                                 ErrorMessage errorMessage = new ErrorMessage();
