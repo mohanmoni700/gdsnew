@@ -89,6 +89,8 @@ public class AmadeusIssuanceServiceImpl {
         FlightItinerary flightItinerary = issuanceRequest.getFlightItinerary();
         List<IssuanceResponse> issuanceResponses = new ArrayList<>();
         IssuanceResponse amadeusIssuanceResponse = null;
+        IssuanceResponse issuanceResponse = null;
+        boolean isIndigoFlight = false;
         for (Journey journey: flightItinerary.getJourneyList()) {
             if (journey.getProvider().equalsIgnoreCase("Amadeus")) {
                 amadeusIssuanceResponse = priceBookedPNR(issuanceRequest);
@@ -96,9 +98,13 @@ public class AmadeusIssuanceServiceImpl {
                 issuanceResponses.add(amadeusIssuanceResponse);
             }
             if(journey.getProvider().equalsIgnoreCase("Indigo")) {
-                IssuanceResponse issuanceResponse = indigoFlightService.priceBookedPNR(issuanceRequest);
+                issuanceResponse = indigoFlightService.priceBookedPNR(issuanceRequest);
                 issuanceResponses.add(issuanceResponse);
+                isIndigoFlight = true;
             }
+        }
+        if (isIndigoFlight) {
+            amadeusIssuanceResponse.setExpirationDate(issuanceResponse.getExpirationDate());
         }
         return amadeusIssuanceResponse;
     }
@@ -284,7 +290,8 @@ public class AmadeusIssuanceServiceImpl {
                     List<FareList> tempPricePNRReplyFareList = pricePNRReply.getFareList();
 
                     int numberOfTst = (issuanceRequest.isSeamen()) ? 1 : AmadeusBookingHelper.getNumberOfTST(issuanceRequest.getTravellerList());
-
+                    System.out.println("numberOfTst "+numberOfTst);
+                    System.out.println("numberOfTst1 "+numberOfTst);
                     if (!isOfficeIdError) {
                         for (int i = 0; i < numberOfTst; i++) {
                             pricePNRReplyFareList.add(tempPricePNRReplyFareList.get(i));
