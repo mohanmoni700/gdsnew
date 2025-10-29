@@ -92,7 +92,7 @@ public class AmadeusRefundServiceImpl implements RefundService{
 
                             List<AMATicketInitRefundRS.FunctionalData.ContractBundle> contractBundles = amaTicketInitRefundRS.getFunctionalData().getContractBundle();
                             for (AMATicketInitRefundRS.FunctionalData.ContractBundle contractBundle : contractBundles) {
-                                if (contractBundle.getErrors() == null) {
+                                if (contractBundle.getErrors() == null && contractBundle.getRefundDetails() != null) {
                                     List<RefundDetailsType.Contracts.Contract> contracts = contractBundle.getRefundDetails().getContracts().getContract();
                                     for (RefundDetailsType.Contracts.Contract contract : contracts) {
                                         List<MonetaryInformationType> monetaryInformations = contract.getMonetaryInformations().getMonetaryInformation();
@@ -233,13 +233,15 @@ public class AmadeusRefundServiceImpl implements RefundService{
 
                                 List<AMATicketProcessRefundRS.FunctionalData.ContractBundle> contractBundles = amaTicketProcessRefundRS.getFunctionalData().getContractBundle();
                                 for(AMATicketProcessRefundRS.FunctionalData.ContractBundle contractBundle:contractBundles){
-                                    List<RefundDetailsLightType.Contracts.Contract> contracts = contractBundle.getRefundDetails().getContracts().getContract();
-                                    for(RefundDetailsLightType.Contracts.Contract contract:contracts){
-                                         ticketProcessRefundRes.setRefundableAmount(contract.getRefundable().getAmount().toString());
-                                         ticketProcessRefundRes.setCurrency(contract.getRefundable().getCurrencyCode());
-                                        List<DocumentAndCouponInformationType> documentAndCouponInformations = contract.getDocumentAndCouponInformation();
-                                        for(DocumentAndCouponInformationType documentAndCouponInformation : documentAndCouponInformations ){
-                                            refundedTickets.add(documentAndCouponInformation.getDocumentNumber().getNumber().toString());
+                                    if (contractBundle.getRefundDetails() != null) {
+                                        List<RefundDetailsLightType.Contracts.Contract> contracts = contractBundle.getRefundDetails().getContracts().getContract();
+                                        for(RefundDetailsLightType.Contracts.Contract contract:contracts){
+                                             ticketProcessRefundRes.setRefundableAmount(contract.getRefundable().getAmount().toString());
+                                             ticketProcessRefundRes.setCurrency(contract.getRefundable().getCurrencyCode());
+                                            List<DocumentAndCouponInformationType> documentAndCouponInformations = contract.getDocumentAndCouponInformation();
+                                            for(DocumentAndCouponInformationType documentAndCouponInformation : documentAndCouponInformations ){
+                                                refundedTickets.add(documentAndCouponInformation.getDocumentNumber().getNumber().toString());
+                                            }
                                         }
                                     }
                                 }
@@ -446,13 +448,15 @@ public class AmadeusRefundServiceImpl implements RefundService{
 
                                 List<AMATicketProcessRefundRS.FunctionalData.ContractBundle> contractBundles = amaTicketProcessRefundRS.getFunctionalData().getContractBundle();
                                 for(AMATicketProcessRefundRS.FunctionalData.ContractBundle contractBundle:contractBundles){
-                                    List<RefundDetailsLightType.Contracts.Contract> contracts = contractBundle.getRefundDetails().getContracts().getContract();
-                                    for(RefundDetailsLightType.Contracts.Contract contract:contracts){
-                                        totalRefundable = totalRefundable.add(contract.getRefundable().getAmount());
-                                        ticketProcessRefundRes.setCurrency(contract.getRefundable().getCurrencyCode());
-                                        List<DocumentAndCouponInformationType> documentAndCouponInformations = contract.getDocumentAndCouponInformation();
-                                        for(DocumentAndCouponInformationType documentAndCouponInformation : documentAndCouponInformations ){
-                                            refundedTickets.add(documentAndCouponInformation.getDocumentNumber().getNumber().toString());
+                                    if (contractBundle.getRefundDetails() != null) {
+                                        List<RefundDetailsLightType.Contracts.Contract> contracts = contractBundle.getRefundDetails().getContracts().getContract();
+                                        for (RefundDetailsLightType.Contracts.Contract contract : contracts) {
+                                            totalRefundable = totalRefundable.add(contract.getRefundable().getAmount());
+                                            ticketProcessRefundRes.setCurrency(contract.getRefundable().getCurrencyCode());
+                                            List<DocumentAndCouponInformationType> documentAndCouponInformations = contract.getDocumentAndCouponInformation();
+                                            for (DocumentAndCouponInformationType documentAndCouponInformation : documentAndCouponInformations) {
+                                                refundedTickets.add(documentAndCouponInformation.getDocumentNumber().getNumber().toString());
+                                            }
                                         }
                                     }
                                 }

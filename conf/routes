@@ -92,7 +92,7 @@ POST  /getAvailableRbdUpsell       @controllers.Application.getAvailableRbdUpsel
 POST /getRbdUpgradePrice           @controllers.Application.getRbdUpgradePrice()
 POST /updateFlightItineraryForSelectedRbd   @controllers.Application.updateFlightItineraryForSelectedRbd()
 
-# Queue Management
+#Queue Management
 POST /getQueueListPnrByOID             @controllers.Application.getQueueListPnrByOID()
 POST /getRetrievePnrDetails            @controllers.Application.getPnrRetrieveDetails()
 POST /queueRemoveItem                  @controllers.Application.removeSpecificPnrFromQueue()
