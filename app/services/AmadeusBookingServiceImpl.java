@@ -40,6 +40,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import dto.*;
 import dto.queueManagement.PnrRetrieveResponseDTO;
 import dto.reissue.AmadeusPaxRefAndTicket;
+import ennum.ConfigMasterConstants;
 import models.AmadeusSessionWrapper;
 import models.CartAirSegmentDTO;
 import models.MiniRule;
@@ -117,6 +118,8 @@ public class AmadeusBookingServiceImpl implements BookingService {
 
     @Autowired
     AmadeusFlightInfoServiceImpl amadeusFlightInfoService;
+    @Autowired
+    private ConfigurationMasterService configurationMasterService;
 
     public AmadeusBookingServiceImpl() {
     }
@@ -1620,7 +1623,12 @@ public class AmadeusBookingServiceImpl implements BookingService {
 
         TravellerMasterInfo masterInfo = new TravellerMasterInfo();
         boolean isSeamen = issuanceRequest.isSeamen();
-        String officeId = isSeamen ? issuanceRequest.getFlightItinerary().getSeamanPricingInformation().getPricingOfficeId() : issuanceRequest.getFlightItinerary().getPricingInformation().getPricingOfficeId();
+        String officeId = "";
+        if(issuanceRequest.getFlightItinerary().isSplitTicket()) {
+            officeId = configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey());
+        } else {
+            officeId = isSeamen ? issuanceRequest.getFlightItinerary().getSeamanPricingInformation().getPricingOfficeId() : issuanceRequest.getFlightItinerary().getPricingInformation().getPricingOfficeId();
+        }
         IssuanceResponse issuanceResponse = new IssuanceResponse();
         masterInfo.setSeamen(isSeamen);
 

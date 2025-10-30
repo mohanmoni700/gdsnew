@@ -16,6 +16,7 @@ import com.compassites.model.traveller.AdditionalInfo;
 import com.compassites.model.traveller.TravellerMasterInfo;
 import com.thoughtworks.xstream.XStream;
 import dto.FareCheckRulesResponse;
+import ennum.ConfigMasterConstants;
 import models.AmadeusSessionWrapper;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
@@ -60,6 +61,8 @@ public class AmadeusIssuanceServiceImpl {
     private AmadeusSourceOfficeService amadeusSourceOfficeService;
     @Autowired
     private IndigoFlightService indigoFlightService;
+    @Autowired
+    private ConfigurationMasterService configurationMasterService;
 
     @Autowired
     public AmadeusIssuanceServiceImpl(AmadeusSessionManager amadeusSessionManager) {
@@ -80,6 +83,12 @@ public class AmadeusIssuanceServiceImpl {
                 if (officeId != null) {
                     return officeId;
                 }
+            }
+        }
+        if (itinerary.isSplitTicket()) {
+            String splitTicketOfficeId = configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey());
+            if (splitTicketOfficeId != null) {
+                return splitTicketOfficeId;
             }
         }
         return null;
@@ -137,9 +146,16 @@ public class AmadeusIssuanceServiceImpl {
         }
 
         boolean isSeamen = issuanceRequest.isSeamen();
-        String pricingOfficeId = isSeamen ? issuanceRequest.getFlightItinerary().getSeamanPricingInformation().getPricingOfficeId() : issuanceRequest.getFlightItinerary().getPricingInformation().getPricingOfficeId();
+        String pricingOfficeId = "";
+        if(issuanceRequest.getFlightItinerary().isSplitTicket()) {
+            pricingOfficeId = configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey());
+        } else {
+            pricingOfficeId = isSeamen ? issuanceRequest.getFlightItinerary().getSeamanPricingInformation().getPricingOfficeId() : issuanceRequest.getFlightItinerary().getPricingInformation().getPricingOfficeId();
+        }
+        //isSeamen ? issuanceRequest.getFlightItinerary().getSeamanPricingInformation().getPricingOfficeId() : issuanceRequest.getFlightItinerary().getPricingInformation().getPricingOfficeId();
         AmadeusSessionWrapper amadeusSessionWrapper = null;
         try {
+            System.out.println("pricingOfficeId "+pricingOfficeId);
             //serviceHandler = new ServiceHandler();
             amadeusSessionWrapper = serviceHandler.logIn(pricingOfficeId, true);
             PNRReply gdsPNRReply = serviceHandler.retrievePNR(issuanceRequest.getGdsPNR(), amadeusSessionWrapper);
@@ -444,6 +460,10 @@ public class AmadeusIssuanceServiceImpl {
                     BigDecimal newLowerPrice = pricingInformation.getTotalPriceValue();
                     issuanceResponse.setNewLowerPrice(newLowerPrice);
                 }
+            }
+            if(issuanceRequest.getFlightItinerary().isSplitTicket()) {
+                issuanceResponse.setIsPriceChanged(false);
+                issuanceResponse.setChangedPriceLow(false);
             }
             issuanceResponse.setSuccess(true);
 
