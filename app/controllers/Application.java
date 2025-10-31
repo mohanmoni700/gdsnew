@@ -717,7 +717,8 @@ public class Application {
         String gdspnr = json.get("gdsPnr").asText();
         String searchOfficeId = json.get("searchOffice").asText();
         String ticketingOfficeId = json.get("ticketingOfficeId").asText();
-        ticketCheckEligibilityRes = refundServiceWrapper.checkTicketEligibility(provider, gdspnr, searchOfficeId, ticketingOfficeId);
+        Boolean isSeamen = json.get("isSeamen").asBoolean();
+        ticketCheckEligibilityRes = refundServiceWrapper.checkTicketEligibility(provider, gdspnr, searchOfficeId, ticketingOfficeId, isSeamen);
         return ok(Json.toJson(ticketCheckEligibilityRes));
     }
 
@@ -740,6 +741,7 @@ public class Application {
         JsonNode json = request().body().asJson();
         String provider = json.get("provider").asText();
         String gdspnr = json.get("gdsPnr").asText();
+        Boolean isSeamen = json.get("isSeamen").asBoolean();
         String searchOfficeId = json.get("searchOffice").asText();
         JsonNode ticketsNode = json.get("tickets");
         String ticketingOfficeId = json.get("ticketingOfficeId").asText();
@@ -756,7 +758,7 @@ public class Application {
                 ticketIdsList.add(ticketIdNode.asText());
             }
         }
-        ticketCheckEligibilityRes = refundServiceWrapper.checkPartRefundTicketEligibility(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId, ticketIdsList);
+        ticketCheckEligibilityRes = refundServiceWrapper.checkPartRefundTicketEligibility(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId, ticketIdsList,isSeamen);
         return ok(Json.toJson(ticketCheckEligibilityRes));
     }
 

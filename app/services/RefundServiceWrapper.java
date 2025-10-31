@@ -19,12 +19,12 @@ public class RefundServiceWrapper {
     @Autowired
     private IndigoFlightService indigoFlightService;
 
-    public TicketCheckEligibilityRes checkTicketEligibility(String provider, String gdsPNR,String searchOfficeId, String ticketingOfficeId){
+    public TicketCheckEligibilityRes checkTicketEligibility(String provider, String gdsPNR,String searchOfficeId, String ticketingOfficeId, Boolean isSeamen){
         TicketCheckEligibilityRes ticketCheckEligibilityRes = null;
       if(provider.equalsIgnoreCase("Amadeus")){
           ticketCheckEligibilityRes =  amadeusRefundService.checkTicketEligibility(gdsPNR,searchOfficeId,ticketingOfficeId);
       } else if(provider.equalsIgnoreCase("Indigo")){
-          ticketCheckEligibilityRes =  indigoFlightService.processFullCancellation(gdsPNR,searchOfficeId,ticketingOfficeId,null);
+          ticketCheckEligibilityRes =  indigoFlightService.processFullCancellation(gdsPNR,searchOfficeId,ticketingOfficeId,null,isSeamen);
       }
       return ticketCheckEligibilityRes;
     }
@@ -39,13 +39,13 @@ public class RefundServiceWrapper {
         return ticketProcessRefundRes;
     }
 
-    public TicketCheckEligibilityRes checkPartRefundTicketEligibility(String provider, String gdsPNR, List<String> ticketList,String searchOfficeId, String ticketingOfficeId, List<String> ticketIdsList){
+    public TicketCheckEligibilityRes checkPartRefundTicketEligibility(String provider, String gdsPNR, List<String> ticketList,String searchOfficeId, String ticketingOfficeId, List<String> ticketIdsList, Boolean isSeamen){
         TicketCheckEligibilityRes ticketCheckEligibilityRes = null;
 
         if(provider.equalsIgnoreCase("Amadeus")){
             ticketCheckEligibilityRes =  amadeusRefundService.checkPartRefundTicketEligibility(ticketList,gdsPNR,searchOfficeId, ticketingOfficeId);
         } else if(provider.equalsIgnoreCase("Indigo")){
-            ticketCheckEligibilityRes =  indigoFlightService.processFullCancellation(gdsPNR,searchOfficeId, ticketingOfficeId, ticketIdsList);
+            ticketCheckEligibilityRes =  indigoFlightService.processFullCancellation(gdsPNR,searchOfficeId, ticketingOfficeId, ticketIdsList, isSeamen);
         }
         return ticketCheckEligibilityRes;
     }

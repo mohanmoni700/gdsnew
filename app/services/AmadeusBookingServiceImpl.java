@@ -1546,6 +1546,12 @@ public class AmadeusBookingServiceImpl implements BookingService {
 //                    }
 
                 }
+
+//                Update the pricing office ID in pricingInfo if not already set
+                if(pnrResponse.getPricingInfo().getPricingOfficeId() == null){
+                    pnrResponse.getPricingInfo().setPricingOfficeId(officeId);
+                }
+
                 return pnrResponse;
             } else {
                 pnrResponse.setFlightAvailable(false);
