@@ -206,10 +206,19 @@ public class AmadeusIssuanceServiceImpl {
             }
 
             List<FareList> pricePNRReplyFareList = new ArrayList<>();
-            boolean isSegmentWisePricing = issuanceRequest.getFlightItinerary().getPricingInformation(issuanceRequest.isSeamen()).isSegmentWisePricing();
-
+            boolean isSegmentWisePricing = false;
+            List<SegmentPricing> segmentPricingList = null;
+            if(issuanceRequest.getFlightItinerary().isSplitTicket()) {
+                int segmentPricingSize = issuanceRequest.getFlightItinerary().getPricingInformation().getSegmentPricingList().size();
+                isSegmentWisePricing = segmentPricingSize >1;
+                if(isSegmentWisePricing) {
+                    segmentPricingList = issuanceRequest.getFlightItinerary().getPricingInformation().getSegmentPricingList();
+                }
+            } else {
+                isSegmentWisePricing = issuanceRequest.getFlightItinerary().getPricingInformation(issuanceRequest.isSeamen()).isSegmentWisePricing();
+                segmentPricingList = issuanceRequest.getFlightItinerary().getPricingInformation(issuanceRequest.isSeamen()).getSegmentPricingList();
+            }
             if (isSegmentWisePricing || isAddedNewSegment) {
-                List<SegmentPricing> segmentPricingList = issuanceRequest.getFlightItinerary().getPricingInformation(issuanceRequest.isSeamen()).getSegmentPricingList();
 
                 Map<String, AirSegmentInformation> segmentsInfo = new HashMap<>();
                 for (Journey journey : issuanceRequest.getFlightItinerary().getJourneys(issuanceRequest.isSeamen())) {
