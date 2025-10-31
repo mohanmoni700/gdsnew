@@ -203,7 +203,7 @@ public class UpsellServiceImpl implements UpsellService{
 //            update the paxFareDetailsList by selectedRBD Details
             List<PAXFareDetails> paxFareDetails = updatePaxFareDetailsWithSelectedRbd(paxFareDetailsList, selectedRBDDetails);
 
-            com.amadeus.xml.tipnrr_13_2_1a.FareInformativePricingWithoutPNRReply fareInformativePricingWithoutPNRReply = serviceHandler.getFareInfo_32(updatedJourneyList, requestDto.isSeamen(), requestDto.getAdultCount(), requestDto.getChildCount(), requestDto.getInfantCount(), paxFareDetails, amadeusSessionWrapper);
+            com.amadeus.xml.tipnrr_13_2_1a.FareInformativePricingWithoutPNRReply fareInformativePricingWithoutPNRReply = serviceHandler.getFareInfo_32(updatedJourneyList, requestDto.isSeamen(), requestDto.getAdultCount(), requestDto.getChildCount(), requestDto.getInfantCount(), paxFareDetails, amadeusSessionWrapper, true);
 
             if (fareInformativePricingWithoutPNRReply.getErrorGroup() != null) {
 
@@ -525,7 +525,7 @@ public class UpsellServiceImpl implements UpsellService{
 
             List<Journey> journeyList = requestDto.isSeamen() ? flightItinerary.getJourneyList() : flightItinerary.getNonSeamenJourneyList();
 
-            com.amadeus.xml.tipnrr_13_2_1a.FareInformativePricingWithoutPNRReply fareInformativePricingWithoutPNRReply = serviceHandler.getFareInfo_32(journeyList, requestDto.isSeamen(), requestDto.getAdultCount(), requestDto.getChildCount(), requestDto.getInfantCount(), paxFareDetails, amadeusSessionWrapper);
+            com.amadeus.xml.tipnrr_13_2_1a.FareInformativePricingWithoutPNRReply fareInformativePricingWithoutPNRReply = serviceHandler.getFareInfo_32(journeyList, requestDto.isSeamen(), requestDto.getAdultCount(), requestDto.getChildCount(), requestDto.getInfantCount(), paxFareDetails, amadeusSessionWrapper, true);
 
             if (fareInformativePricingWithoutPNRReply.getErrorGroup() != null) {
 
@@ -991,22 +991,32 @@ private FlightItinerary updateFlightItinerary(List<PassengerPricingDetail> passe
 
 
             // Calculate totals
-            BigDecimal totalBasePrice = zeroIfNull(pricingInformation.getAdtBasePrice()).multiply(BigDecimal.valueOf(adultCount))
-                    .add(zeroIfNull(pricingInformation.getChdBasePrice()).multiply(BigDecimal.valueOf(childCount)))
-                    .add(zeroIfNull(pricingInformation.getInfBasePrice()).multiply(BigDecimal.valueOf(infCount)));
+            BigDecimal totalBasePrice = BigDecimal.ZERO;
+            BigDecimal totalFare = BigDecimal.ZERO;
+            BigDecimal totalTax = BigDecimal.ZERO;
 
-            BigDecimal totalFare = zeroIfNull(pricingInformation.getAdtTotalPrice()).multiply(BigDecimal.valueOf(adultCount))
-                    .add(zeroIfNull(pricingInformation.getChdTotalPrice()).multiply(BigDecimal.valueOf(childCount)))
-                    .add(zeroIfNull(pricingInformation.getInfTotalPrice()).multiply(BigDecimal.valueOf(infCount)));
+//             calculate the totals for seamen
+            if(seamen) {
+                int paxCount = adultCount + childCount + infCount;
 
-            BigDecimal totalTax = totalFare.subtract(totalBasePrice);
+                totalBasePrice = zeroIfNull(pricingInformation.getAdtBasePrice()).multiply(BigDecimal.valueOf(paxCount));
 
-            int paxCount = adultCount + childCount + infCount;
-            if(seamen){
-              totalBasePrice  = totalBasePrice.multiply(BigDecimal.valueOf(paxCount));
-              totalTax = totalTax.multiply(BigDecimal.valueOf(paxCount));
-              totalFare = totalFare.multiply(BigDecimal.valueOf(paxCount));
+                 totalFare = zeroIfNull(pricingInformation.getAdtTotalPrice()).multiply(BigDecimal.valueOf(paxCount));
+
+                 totalTax = totalFare.subtract(totalBasePrice);
+
+            }else{
+                 totalBasePrice = zeroIfNull(pricingInformation.getAdtBasePrice()).multiply(BigDecimal.valueOf(adultCount))
+                        .add(zeroIfNull(pricingInformation.getChdBasePrice()).multiply(BigDecimal.valueOf(childCount)))
+                        .add(zeroIfNull(pricingInformation.getInfBasePrice()).multiply(BigDecimal.valueOf(infCount)));
+
+                 totalFare = zeroIfNull(pricingInformation.getAdtTotalPrice()).multiply(BigDecimal.valueOf(adultCount))
+                        .add(zeroIfNull(pricingInformation.getChdTotalPrice()).multiply(BigDecimal.valueOf(childCount)))
+                        .add(zeroIfNull(pricingInformation.getInfTotalPrice()).multiply(BigDecimal.valueOf(infCount)));
+
+                 totalTax = totalFare.subtract(totalBasePrice);
             }
+
 
 
             // Set pax fare and cabin info

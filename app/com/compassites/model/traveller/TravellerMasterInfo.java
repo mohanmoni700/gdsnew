@@ -53,6 +53,8 @@ public class TravellerMasterInfo {
     private String provider;
     private BigDecimal refundAmount;
     private boolean isRefund;
+    private BigDecimal exchangeRate;
+
 
     public BigDecimal getRefundAmount() {
         return refundAmount;
@@ -452,4 +454,11 @@ public class TravellerMasterInfo {
         this.crewOpId = crewOpId;
     }
 
+    public BigDecimal getExchangeRate() {
+        return exchangeRate;
+    }
+
+    public void setExchangeRate(BigDecimal exchangeRate) {
+        this.exchangeRate = exchangeRate;
+    }
 }

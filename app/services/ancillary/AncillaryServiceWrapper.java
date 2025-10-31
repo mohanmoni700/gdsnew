@@ -9,6 +9,7 @@ import com.compassites.model.traveller.TravellerMasterInfo;
 import models.AncillaryServiceRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import services.akbar.AkbarTravelsApIEntry;
 import services.indigo.IndigoFlightService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,9 @@ public class AncillaryServiceWrapper implements AncillaryService {
 
     @Autowired
     private IndigoFlightService indigoFlightService;
+
+    @Autowired
+    private AkbarTravelsApIEntry akbarTravelsApIEntry;
 
     @Override
     public AncillaryServicesResponse getAdditionalBaggageInfoStandalone(AncillaryServiceRequest ancillaryServiceRequest) {
@@ -86,6 +90,11 @@ public class AncillaryServiceWrapper implements AncillaryService {
     public PNRResponse getFreeMealsAndSeatsConfirm(TravellerMasterInfo travellerMasterInfo) {
         PNRResponse pnrResponse = amadeusAncillaryService.getFreeMealsAndSeatsConfirm(travellerMasterInfo);
         return pnrResponse;
+    }
+
+    @Override
+    public AncillaryServicesResponse getPaidAncillaryAtPaxInfoPage(TravellerMasterInfo travellerMasterInfo) {
+        return akbarTravelsApIEntry.getPaidAncillaryAtPaxInfoPage(travellerMasterInfo);
     }
 
 }

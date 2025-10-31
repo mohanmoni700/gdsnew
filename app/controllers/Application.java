@@ -37,6 +37,7 @@ import services.QueueManagement.QueueManagementService;
 import services.akbar.AkbarTravelsApIEntry;
 import services.ancillary.AncillaryService;
 import services.reissue.ReIssueService;
+import services.russian.RussianFlightService;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -110,6 +111,9 @@ public class Application {
 
     @Autowired
     private AkbarTravelsApIEntry akbarTravelsApIEntry;
+
+    @Autowired
+    private RussianFlightService russianFlightService;
 
     static Logger logger = LoggerFactory.getLogger("gds");
     static Logger indigoLogger = LoggerFactory.getLogger("indigo");
@@ -421,13 +425,17 @@ public class Application {
         return ok(Json.toJson(masterInfo));
     }
 
+
     @BodyParser.Of(BodyParser.Json.class)
     public Result getBookingDetails() {
         JsonNode json = request().body().asJson();
         String pnr = Json.fromJson(json.findPath("gdsPNR"), String.class);
         String provider = Json.fromJson(json.findPath("provider"), String.class);
+        boolean isSeamenBooking = json.findValue("isSeamen").asBoolean();
+        boolean isUploadBooking = json.findValue("isUploadBooking").asBoolean();
+
         logger.debug("getBookingDetails request : " + json);
-        JsonNode res = bookingService.getBookingDetails(provider, pnr);
+        JsonNode res = bookingService.getBookingDetails(provider, pnr, isUploadBooking, isSeamenBooking);
         logger.debug("getBookingDetails response =>>>>>>>>>>>> " + res);
         return ok(res);
     }
@@ -549,7 +557,7 @@ public class Application {
         if (PROVIDERS.AMADEUS.toString().equalsIgnoreCase(provider)) {
 //            AmadeusBookingServiceImpl amadeusBookingService = new AmadeusBookingServiceImpl();
 //        amadeusBookingService.getDisplayTicketDetails(pnr);
-            jsonNode = amadeusBookingService.getBookingDetails(pnr);
+            jsonNode = amadeusBookingService.getBookingDetails(pnr,false,false);
 
         } else {
             TravelportBookingServiceImpl travelportBookingService = new TravelportBookingServiceImpl();
@@ -565,7 +573,7 @@ public class Application {
         if (PROVIDERS.MYSTIFLY.toString().equalsIgnoreCase(provider)) {
             jsonNode = mystiflyBookingService.getBookingDetails(pnr);
         } else if (PROVIDERS.AMADEUS.toString().equalsIgnoreCase(provider)) {
-            jsonNode = amadeusBookingService.getBookingDetails(pnr);
+            jsonNode = amadeusBookingService.getBookingDetails(pnr,false,false);
         }
         return ok(jsonNode);
 
@@ -787,7 +795,7 @@ public class Application {
                 }
         );
 
-        ticketProcessRefundRes = refundServiceWrapper.processPartialRefund(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId,indigoPaxNumbers, travellerMasterInfo);
+        ticketProcessRefundRes = refundServiceWrapper.processPartialRefund(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId, indigoPaxNumbers, travellerMasterInfo);
         logger.debug("Ticket process refund response {} ", Json.toJson(ticketProcessRefundRes));
         return ok(Json.toJson(ticketProcessRefundRes));
     }
@@ -929,7 +937,7 @@ public class Application {
         return ok(Json.toJson(amadeusExchangeRatesMap));
     }
 
-    public Result getQueueListPnrByOID () {
+    public Result getQueueListPnrByOID() {
 
         try {
             JsonNode json = request().body().asJson();
@@ -950,7 +958,7 @@ public class Application {
         }
     }
 
-    public Result getPnrRetrieveDetails () {
+    public Result getPnrRetrieveDetails() {
 
         try {
             JsonNode json = request().body().asJson();
@@ -962,10 +970,11 @@ public class Application {
             String gdsPnr = json.get("gdsPNR").asText();
             String officeId = json.get("officeId").asText();
             ObjectMapper mapper = new ObjectMapper();
-            Map<Integer, String> journeyMap = mapper.convertValue(json.get("journeyMap"), new TypeReference<Map<Integer, String>>() {});
+            Map<Integer, String> journeyMap = mapper.convertValue(json.get("journeyMap"), new TypeReference<Map<Integer, String>>() {
+            });
             TravellerMasterInfo travellerMasterInfo = Json.fromJson(json.findPath("masterInfo"), TravellerMasterInfo.class);
 
-            PnrRetrieveResponseDTO pnrRetrieveResponseDTO = amadeusBookingService.getPnrRetrieveForGdsPnr(gdsPnr,officeId,journeyMap,travellerMasterInfo);
+            PnrRetrieveResponseDTO pnrRetrieveResponseDTO = amadeusBookingService.getPnrRetrieveForGdsPnr(gdsPnr, officeId, journeyMap, travellerMasterInfo);
 
             return ok(Json.toJson(pnrRetrieveResponseDTO));
         } catch (Exception e) {
@@ -975,7 +984,7 @@ public class Application {
 
     }
 
-    public Result removeSpecificPnrFromQueue () {
+    public Result removeSpecificPnrFromQueue() {
 
         try {
             JsonNode json = request().body().asJson();
@@ -1016,7 +1025,7 @@ public class Application {
     }
 
     // Free Meals and Seats Confirmation
-    public Result getFreeMealsAndSeatsConfirmation(){
+    public Result getFreeMealsAndSeatsConfirmation() {
         JsonNode json = request().body().asJson();
         TravellerMasterInfo travellerMasterInfo = Json.fromJson(json, TravellerMasterInfo.class);
         logger.debug("Free Meals and Seats Confirm Request {} ", Json.toJson(travellerMasterInfo));
@@ -1065,7 +1074,7 @@ public class Application {
 
     }
 
-
+    //This API completed and issues ticket (Akbar)
     public Result completePaymentAndIssueTicket() {
 
         logger.info("GDS Akbar Complete Booking Init");
@@ -1078,6 +1087,30 @@ public class Application {
         logger.info("GDS Akbar Complete Booking completed");
         return ok(Json.toJson(issuanceResponse));
 
+    }
+
+    public Result confirmAndIssueTicket(){
+        logger.info("GDS Russian Ticket Init");
+        JsonNode jsonNode = request().body().asJson();
+
+        IssuanceRequest issuanceRequest = Json.fromJson(jsonNode, IssuanceRequest.class);
+
+        IssuanceResponse issuanceResponse = russianFlightService.confirmAndIssueTicket(issuanceRequest);
+
+        return ok(Json.toJson(issuanceResponse));
+    }
+
+    //This api is called to fetch paid Ancillary/SSR information at pax info page
+    public Result getPaidAncillaryAtPaxInfoPage() {
+
+        logger.info("Paid Ancillary at pax info page Init");
+        JsonNode jsonNode = request().body().asJson();
+
+        TravellerMasterInfo travellerMasterInfo = Json.fromJson(jsonNode, TravellerMasterInfo.class);
+        AncillaryServicesResponse ancillaryServicesResponse = ancillaryService.getPaidAncillaryAtPaxInfoPage(travellerMasterInfo);
+
+        logger.info("Paid Ancillary at pax info page Completed");
+        return ok(Json.toJson(ancillaryServicesResponse));
     }
 
 

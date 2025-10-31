@@ -1,10 +1,7 @@
 package services.akbar;
 
 import com.compassites.constants.AkbarConstants;
-import com.compassites.model.FlightItinerary;
-import com.compassites.model.IssuanceRequest;
-import com.compassites.model.IssuanceResponse;
-import com.compassites.model.PNRResponse;
+import com.compassites.model.*;
 import com.compassites.model.traveller.TravellerMasterInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -166,7 +163,6 @@ public class AkbarTravelsApIEntryImpl implements AkbarTravelsApIEntry {
     @Override
     public IssuanceResponse completePaymentAndIssueTicket(IssuanceRequest issuanceRequest) {
 
-
         try {
             ObjectMapper objectMapper = new ObjectMapper();
             String jsonString = objectMapper.writeValueAsString(issuanceRequest);
@@ -193,7 +189,37 @@ public class AkbarTravelsApIEntryImpl implements AkbarTravelsApIEntry {
             logger.error("Error during Complete Payment: {}", e.getMessage(), e);
             return null;
         }
+    }
 
+    @Override
+    public AncillaryServicesResponse getPaidAncillaryAtPaxInfoPage(TravellerMasterInfo travellerMasterInfo) {
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jsonString = objectMapper.writeValueAsString(travellerMasterInfo);
+            RequestBody requestBody = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
+            String url = endPoint + AkbarConstants.getPaidSSR;
+            Request request = new Request.Builder().url(url).post(requestBody).build();
+
+            akbarLogger.info("Akbar Paid Ancillary Request: {}", jsonString);
+            logger.info("Akbar Paid Ancillary Request: {}", jsonString);
+
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful()) {
+                    String responseBody = response.body().string();
+                    AncillaryServicesResponse ancillaryServicesResponse = objectMapper.readValue(responseBody, AncillaryServicesResponse.class);
+                    akbarLogger.debug("Akbar Paid Ancillary Response: {}", responseBody);
+
+                    return ancillaryServicesResponse;
+                } else {
+                    logger.error("Failed to Paid Ancillary from Akbar API: {} for TUI: {}", response.message(), Json.toJson(travellerMasterInfo.getItinerary()));
+                    throw new Exception("Failed to Paid Ancillary from Akbar API: " + response.message());
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error during Paid Ancillary : {}", e.getMessage(), e);
+            return null;
+        }
     }
 
 }

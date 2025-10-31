@@ -106,6 +106,20 @@ public class IssuanceRequest implements Serializable{
 
     private Long crewOpId;
 
+    private String russianShoppingId;
+
+    private String russianOrderId;
+
+    private String totalEquivAmount;
+
+    private BigDecimal russianNetAmt;
+
+    private BigDecimal russianEquivAmount;
+
+    private String russianPriceList;
+
+    private Map<String , String> russianPaxRef;
+
     public Long getCrewOpId() {
         return crewOpId;
     }
@@ -355,4 +369,59 @@ public class IssuanceRequest implements Serializable{
         this.mealDetailsList = mealDetailsList;
     }
 
+    public String getRussianShoppingId() {
+        return russianShoppingId;
+    }
+
+    public void setRussianShoppingId(String russianShoppingId) {
+        this.russianShoppingId = russianShoppingId;
+    }
+
+    public String getRussianOrderId() {
+        return russianOrderId;
+    }
+
+    public void setRussianOrderId(String russianOrderId) {
+        this.russianOrderId = russianOrderId;
+    }
+
+    public String getTotalEquivAmount() {
+        return totalEquivAmount;
+    }
+
+    public void setTotalEquivAmount(String totalEquivAmount) {
+        this.totalEquivAmount = totalEquivAmount;
+    }
+
+    public BigDecimal getRussianNetAmt() {
+        return russianNetAmt;
+    }
+
+    public void setRussianNetAmt(BigDecimal russianNetAmt) {
+        this.russianNetAmt = russianNetAmt;
+    }
+
+    public BigDecimal getRussianEquivAmount() {
+        return russianEquivAmount;
+    }
+
+    public void setRussianEquivAmount(BigDecimal russianEquivAmount) {
+        this.russianEquivAmount = russianEquivAmount;
+    }
+
+    public String getRussianPriceList() {
+        return russianPriceList;
+    }
+
+    public void setRussianPriceList(String russianPriceList) {
+        this.russianPriceList = russianPriceList;
+    }
+
+    public Map<String, String> getRussianPaxRef() {
+        return russianPaxRef;
+    }
+
+    public void setRussianPaxRef(Map<String, String> russianPaxRef) {
+        this.russianPaxRef = russianPaxRef;
+    }
 }

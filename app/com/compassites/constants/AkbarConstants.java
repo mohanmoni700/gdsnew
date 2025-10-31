@@ -12,6 +12,7 @@ public class AkbarConstants {
     public static final String checkFareChangeAndFlightAvailability = "checkFareChangeAndFlightAvailability";
     public static final String generatePnr = "generatePnr";
     public static final String completePaymentAndIssueTicket = "completePaymentAndIssueTicket";
+    public static final String getPaidSSR = "getPaidSSR";
 
 
 }

@@ -171,6 +171,16 @@ public class PNRResponse implements Serializable  {
 
     private String childPnr;
 
+    private String shoppingResponse;
+
+    private String russianOrderId;
+
+    private Map<String , String> russianOrderItemids;
+
+    private Map<String , String> russianPaxRef;
+
+    private List<String> russianPriceClassList;
+
     public String getChildPnr() {
         return childPnr;
     }
@@ -579,4 +589,45 @@ public class PNRResponse implements Serializable  {
         this.akbarTUI = akbarTUI;
     }
 
+    public String getShoppingResponse() {
+        return shoppingResponse;
+    }
+
+    public void setShoppingResponse(String shoppingResponse) {
+        this.shoppingResponse = shoppingResponse;
+    }
+
+    public String getRussianOrderId() {
+        return russianOrderId;
+    }
+
+    public void setRussianOrderId(String russianOrderId) {
+        this.russianOrderId = russianOrderId;
+    }
+
+
+
+    public List<String> getRussianPriceClassList() {
+        return russianPriceClassList;
+    }
+
+    public void setRussianPriceClassList(List<String> russianPriceClassList) {
+        this.russianPriceClassList = russianPriceClassList;
+    }
+
+    public Map<String, String> getRussianOrderItemids() {
+        return russianOrderItemids;
+    }
+
+    public void setRussianOrderItemids(Map<String, String> russianOrderItemids) {
+        this.russianOrderItemids = russianOrderItemids;
+    }
+
+    public Map<String, String> getRussianPaxRef() {
+        return russianPaxRef;
+    }
+
+    public void setRussianPaxRef(Map<String, String> russianPaxRef) {
+        this.russianPaxRef = russianPaxRef;
+    }
 }

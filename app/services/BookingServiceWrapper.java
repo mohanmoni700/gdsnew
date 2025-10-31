@@ -3,6 +3,7 @@ package services;
 import com.compassites.GDSWrapper.mystifly.Mystifly;
 import com.compassites.constants.AkbarConstants;
 import com.compassites.constants.IndigoConstants;
+import com.compassites.constants.RussianConstants;
 import com.compassites.constants.TraveloMatrixConstants;
 import com.compassites.model.*;
 import com.compassites.model.traveller.TravellerMasterInfo;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import services.akbar.AkbarTravelsApIEntry;
 import services.indigo.IndigoFlightService;
+import services.russian.RussianFlightService;
 import utils.PNRRequest;
 
 import java.io.IOException;
@@ -51,6 +53,9 @@ public class BookingServiceWrapper {
 
 	@Autowired
 	private IndigoFlightService indigoFlightService;
+
+	@Autowired
+	private RussianFlightService russianFlightService;
 
     @Autowired
     private AkbarTravelsApIEntry akbarTravelsApIEntry;
@@ -98,7 +103,10 @@ public class BookingServiceWrapper {
 			pnrResponse = indigoFlightService.generatePNR(travellerMasterInfo);
 		} else if (AkbarConstants.provider.equalsIgnoreCase(provider)) {
             pnrResponse = akbarTravelsApIEntry.generatePnr(travellerMasterInfo);
-        }
+        } else if(RussianConstants.provider.equalsIgnoreCase(provider)) {
+			pnrResponse = russianFlightService.generatePNR(travellerMasterInfo);
+
+		}
         return pnrResponse;
 	}
 
@@ -188,9 +196,11 @@ public class BookingServiceWrapper {
 			pnrResponse = indigoFlightService.checkFareChangeAndAvailability(travellerMasterInfo);
 		} else if (AkbarConstants.provider.equalsIgnoreCase(provider)) {
             pnrResponse = akbarTravelsApIEntry.checkFareChangeAndFlightAvailability(travellerMasterInfo);
+        }else if (RussianConstants.provider.equalsIgnoreCase(provider)) {
+            pnrResponse = russianFlightService.checkFareChangeAndAvailability(travellerMasterInfo);
         }
 
-        return pnrResponse;
+		return pnrResponse;
 	}
 
 	public List<PNRResponse> checkSplitFareAvailability(List<TravellerMasterInfo> travellerMasterInfos) {
@@ -221,17 +231,18 @@ public class BookingServiceWrapper {
 		return masterInfo;
 	}
 
-	public JsonNode getBookingDetails(String provider, String gdsPNR) {
+	public JsonNode getBookingDetails(String provider, String gdsPNR,boolean isUploadBooking,boolean isSeamenBooking) {
 		JsonNode json = null;
 		if("Travelport".equalsIgnoreCase(provider) || "Galileo".equalsIgnoreCase(provider)){
 			json = travelPortBookingService.getBookingDetails(gdsPNR);
 		} else if("Amadeus".equalsIgnoreCase(provider)){
-			json = amadeusBookingService.getBookingDetails(gdsPNR);
+			json = amadeusBookingService.getBookingDetails(gdsPNR,isUploadBooking,isSeamenBooking);
 		}else if ("Mystifly".equalsIgnoreCase(provider)){
 			json =  mystiflyBookingService.getBookingDetails(gdsPNR);
 		}
 		return json;
 	}
+
 	public JsonNode getBookingDetailsByOfficeId(String provider, String gdsPNR, String officeId) {
 		JsonNode json = null;
 		if("Travelport".equalsIgnoreCase(provider) || "Galileo".equalsIgnoreCase(provider)){
@@ -272,7 +283,7 @@ public class BookingServiceWrapper {
 			if("Travelport".equalsIgnoreCase(pnrRequest.getProvider()) || "Galileo".equalsIgnoreCase(pnrRequest.getProvider())){
 				jsonMap.put(pnrRequest.getGdsPnr(), travelPortBookingService.getBookingDetails(pnrRequest.getGdsPnr()));
 			} else if("Amadeus".equalsIgnoreCase(pnrRequest.getProvider())){
-				jsonMap.put(pnrRequest.getGdsPnr(), amadeusBookingService.getBookingDetails(pnrRequest.getGdsPnr()));
+				jsonMap.put(pnrRequest.getGdsPnr(), amadeusBookingService.getBookingDetails(pnrRequest.getGdsPnr(),false,false));
 			} else if("Mystifly".equalsIgnoreCase(pnrRequest.getProvider())){
 				jsonMap.put(pnrRequest.getGdsPnr(), mystiflyBookingService.getBookingDetails(pnrRequest.getGdsPnr()));
 			}

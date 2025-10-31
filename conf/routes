@@ -72,6 +72,7 @@ POST /showMealsInfoStandalone             @controllers.Application.addMealsReque
 POST /getAvailableAncillaryServices            @controllers.Application.getAvailableAncillaryServices()
 POST /confirmAncillaryPayment             @controllers.Application.getAncillaryBaggagePaymentConfirmation()
 POST /confirmFreeMealsAndSeats         @controllers.Application.getFreeMealsAndSeatsConfirmation()
+POST /getPaidAncillaryAtPaxInfoPage    @controllers.Application.getPaidAncillaryAtPaxInfoPage()
 
 #Report
 POST    /openTicketReport   @controllers.Application.openTicketReport()
@@ -100,3 +101,6 @@ POST /queueRemoveItem                  @controllers.Application.removeSpecificPn
 
 #Akbar
 POST /completePaymentAndIssueTicket         @controllers.Application.completePaymentAndIssueTicket()
+
+#Russian
+POST /confirmAndIssueTicket                 @controllers.Application.confirmAndIssueTicket()

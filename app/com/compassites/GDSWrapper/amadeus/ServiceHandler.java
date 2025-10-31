@@ -970,12 +970,12 @@ public class ServiceHandler {
     }
 
     //This uses the latest pricing API
-    public com.amadeus.xml.tipnrr_13_2_1a.FareInformativePricingWithoutPNRReply getFareInfo_32(List<Journey> journeys, boolean seamen, int adultCount, int childCount, int infantCount, List<PAXFareDetails> paxFareDetailsList, AmadeusSessionWrapper amadeusSessionWrapper) {
+    public com.amadeus.xml.tipnrr_13_2_1a.FareInformativePricingWithoutPNRReply getFareInfo_32(List<Journey> journeys, boolean seamen, int adultCount, int childCount, int infantCount, List<PAXFareDetails> paxFareDetailsList, AmadeusSessionWrapper amadeusSessionWrapper, boolean isUpsell) {
 
         logger.debug("amadeus getFareInfo 13.2 called at {}....................Session Id: {}", new Date(), amadeusSessionWrapper.getSessionId());
         amadeusSessionWrapper.incrementSequenceNumber(amadeusSessionWrapper, bindingProvider);
 
-        com.amadeus.xml.tipnrq_13_2_1a.FareInformativePricingWithoutPNR farePricingWithoutPNR = new FareInformation13_2().getPriceInfo(journeys, seamen, adultCount, childCount, infantCount, paxFareDetailsList);
+        com.amadeus.xml.tipnrq_13_2_1a.FareInformativePricingWithoutPNR farePricingWithoutPNR = new FareInformation13_2().getPriceInfo(journeys, seamen, adultCount, childCount, infantCount, paxFareDetailsList, isUpsell);
         amadeusLogger.debug("farePricingWithoutPNRReq  13.2 {} SessionId: {} ---->\n{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(farePricingWithoutPNR));
 
         com.amadeus.xml.tipnrr_13_2_1a.FareInformativePricingWithoutPNRReply fareInformativePricingPNRReply = mPortType.fareInformativePricingWithoutPNR(farePricingWithoutPNR, amadeusSessionWrapper.getmSession(), amadeusSessionWrapper.getTransactionFlowLinkTypeHolder(), amadeusSessionWrapper.getAmaSecurityHostedUser());
