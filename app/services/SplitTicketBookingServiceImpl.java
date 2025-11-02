@@ -693,9 +693,9 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                 checkFlightAvailibility(travellerMasterInfo, pnrResponse, amadeusSessionWrapper);
                 System.out.println("Flight Available : " + pnrResponse.isFlightAvailable());
                 if (pnrResponse.isFlightAvailable()) {
-                    if(!isFirstSegmentSell) {
+                    //if(!isFirstSegmentSell) {
                         gdsPNRReply = serviceHandler.addTravellerInfoToPNR(travellerMasterInfo, amadeusSessionWrapper);
-                    }
+                    //}
                     /* Benzy changes */
                     PNRReply gdsPNRReplyBenzy = null;
                     FarePricePNRWithBookingClassReply pricePNRReplyBenzy = null;
@@ -1427,6 +1427,7 @@ System.out.println("sim 2");
         if(travellerMasterInfo.getAdditionalInfo()!=null && travellerMasterInfo.getAdditionalInfo().getAddBooking()!=null && travellerMasterInfo.getAdditionalInfo().getAddBooking()) {
             isAddBooking = true;
         }
+        System.out.println("amadeusSessionWrapper  in checkPNRPricingForSplit "+amadeusSessionWrapper.getOfficeId());
         pricePNRReply = serviceHandler.pricePNR(carrierCode, gdsPNRReply, isSeaman, isDomestic, travellerMasterInfo.getItinerary(), airSegmentList, isSegmentWisePricing, amadeusSessionWrapper,isAddBooking);
         if (pricePNRReply.getApplicationError() != null) {
             if (pricePNRReply.getApplicationError().getErrorOrWarningCodeDetails().getErrorDetails().getErrorCode().equalsIgnoreCase("0")
