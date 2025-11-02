@@ -11,9 +11,26 @@ public class TicketProcessRefundRes {
     private List<String> refTicketsList;
     private String refundableAmount;
     private String currency;
-
     private ErrorMessage message;
     private List<String> ticketIdsList;
+    private boolean isCancellationRequested;
+    private Long akbarCancelOrRefundRequestId;
+
+    public boolean isCancellationRequested() {
+        return isCancellationRequested;
+    }
+
+    public void setCancellationRequested(boolean cancellationRequested) {
+        isCancellationRequested = cancellationRequested;
+    }
+
+    public Long getAkbarCancelOrRefundRequestId() {
+        return akbarCancelOrRefundRequestId;
+    }
+
+    public void setAkbarCancelOrRefundRequestId(Long akbarCancelOrRefundRequestId) {
+        this.akbarCancelOrRefundRequestId = akbarCancelOrRefundRequestId;
+    }
 
     public List<String> getTicketIdsList() {
         return ticketIdsList;

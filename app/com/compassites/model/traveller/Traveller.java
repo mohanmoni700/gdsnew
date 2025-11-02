@@ -4,6 +4,7 @@ import com.compassites.model.BaggageDetails;
 import com.compassites.model.MealDetails;
 import com.compassites.model.MealDetailsMap;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 
 import java.util.List;
@@ -15,6 +16,8 @@ import java.util.Map;
 /**
  * Created by mahendra-singh on 25/7/14.
  */
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Traveller {
 
 	@JsonIgnore
@@ -150,4 +153,13 @@ public class Traveller {
 		this.amadeusPaxSegLineRef = amadeusPaxSegLineRef;
 	}
 
+	private String ticketIssueDateForUploadBooking;
+
+	public String getTicketIssueDateForUploadBooking() {
+		return ticketIssueDateForUploadBooking;
+	}
+
+	public void setTicketIssueDateForUploadBooking(String ticketIssueDateForUploadBooking) {
+		this.ticketIssueDateForUploadBooking = ticketIssueDateForUploadBooking;
+	}
 }

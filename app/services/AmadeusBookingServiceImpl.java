@@ -2473,7 +2473,7 @@ public class AmadeusBookingServiceImpl implements BookingService {
 
         for (PNRReply.DataElementsMaster.DataElementsIndiv dataElementsDiv : gdsPNRReply.getDataElementsMaster().getDataElementsIndiv()) {
             String segName = dataElementsDiv.getElementManagementData() != null ? dataElementsDiv.getElementManagementData().getSegmentName() : null;
-            if (!"FA".equalsIgnoreCase(segName) && !"FHM".equalsIgnoreCase(segName) && !"FHE".equalsIgnoreCase(segName)) {
+            if (!"FA".equalsIgnoreCase(segName) && !"FHM".equalsIgnoreCase(segName)) {
                 continue;
             }
 
@@ -2569,8 +2569,26 @@ public class AmadeusBookingServiceImpl implements BookingService {
                     freeText = arr.length > 1 ? arr[1] : ticketText;
                 }
             }
-            String[] freeTextArr = freeText.split("/");
-            String ticketNumber = freeTextArr.length > 0 ? freeTextArr[0].replaceFirst("^...", "").trim() : null;
+
+            String ticketNumber;
+            String ticketIssueDate = null;
+            if ("FHM".equalsIgnoreCase(segName)) {
+                ticketNumber = freeText.trim();
+            } else {
+                String[] freeTextArr = freeText.split("/");
+                ticketNumber = freeTextArr.length > 0 ? freeTextArr[0].replaceFirst("^...", "").trim() : null;
+                try {
+                    for (String element : freeTextArr) {
+                        if (element.matches("\\d{2}[A-Z]{3}\\d{2}")) {
+                            Date parsedDate = new SimpleDateFormat("ddMMMyy", Locale.ENGLISH).parse(element);
+                            ticketIssueDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(parsedDate);
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.debug("error occurred while extracting the issue date", e);
+                }
+            }
             if (ticketNumber == null || ticketNumber.isEmpty()) {
                 continue;
             }
@@ -2606,6 +2624,7 @@ public class AmadeusBookingServiceImpl implements BookingService {
                         }
                     }
                     appTraveller.setTicketNumberMap(ticketMap);
+                    appTraveller.setTicketIssueDateForUploadBooking(ticketIssueDate);
                     break;
                 }
             }

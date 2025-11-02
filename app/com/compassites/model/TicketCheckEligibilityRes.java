@@ -1,17 +1,21 @@
 package com.compassites.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import dto.refund.PerPaxRefundPricingInformation;
+import org.intellij.lang.annotations.JdkConstants;
 
 import java.math.BigDecimal;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class TicketCheckEligibilityRes {
+
     private Boolean status;
     private BigDecimal refundableAmount;
     private String currency;
     private String formOfPayment;
     private ErrorMessage message;
-
+    private String provider;
     List<PerPaxRefundPricingInformation> perPaxRefundPricingInformationList;
 
     public ErrorMessage getMessage() {
@@ -59,6 +63,14 @@ public class TicketCheckEligibilityRes {
 
     public void setPerPaxRefundPricingInformationList(List<PerPaxRefundPricingInformation> perPaxRefundPricingInformationList) {
         this.perPaxRefundPricingInformationList = perPaxRefundPricingInformationList;
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
     }
 
 }

@@ -3729,6 +3729,11 @@ public class AmadeusBookingHelper {
                                                         if (departureStation != null && departureStation.getDepartTerminal() != null) {
                                                             segment.setFromTerminal(departureStation.getDepartTerminal());
                                                         }
+
+                                                        AdditionalProductTypeI productDetails = flightDetail.getProductDetails();
+                                                        if (productDetails != null) {
+                                                            segment.setEquipment(productDetails.getEquipment());
+                                                        }
                                                     }
                                                 }
                                             }
@@ -3781,17 +3786,30 @@ public class AmadeusBookingHelper {
 
                                             if (match) {
 
-                                                if (!Objects.equals(airSegmentInformation.getDepartureTime(), dbSegment.getDepartureTime()))
+                                                if (!Objects.equals(airSegmentInformation.getDepartureTime(), dbSegment.getDepartureTime())) {
                                                     changedFields.add("departureTime");
-                                                if (!Objects.equals(airSegmentInformation.getArrivalTime(), dbSegment.getArrivalTime()))
+                                                }
+                                                if (!Objects.equals(airSegmentInformation.getArrivalTime(), dbSegment.getArrivalTime())) {
                                                     changedFields.add("arrivalTime");
-                                                if (!Objects.equals(airSegmentInformation.getFromTerminal(), dbSegment.getFromTerminal()))
+                                                }
+                                                if (!Objects.equals(airSegmentInformation.getFromTerminal(), dbSegment.getFromTerminal())) {
                                                     changedFields.add("departureTerminal");
-                                                if (!Objects.equals(airSegmentInformation.getToTerminal(), dbSegment.getToTerminal()))
+                                                }
+                                                if (!Objects.equals(airSegmentInformation.getToTerminal(), dbSegment.getToTerminal())) {
                                                     changedFields.add("arrivalTerminal");
-                                                if (!Objects.equals(airSegmentInformation.getFlightNumber(), dbSegment.getFlightNumber()))
+                                                }
+                                                if (!Objects.equals(airSegmentInformation.getFlightNumber(), dbSegment.getFlightNumber())) {
                                                     changedFields.add("flightNumber");
-
+                                                }
+                                                if (!Objects.equals(airSegmentInformation.getEquipment(), dbSegment.getEquipment())) {
+                                                    changedFields.add("equipment");
+                                                }
+//                                                if (!Objects.equals(airSegmentInformation.getCabinClass(), dbSegment.getBookingClass())) {
+//                                                    changedFields.add("rbd");
+//                                                }
+//                                                if (!Objects.equals(airSegmentInformation.getCarrierCode(), dbSegment.getCarrierCode())) {
+//                                                    changedFields.add("carrierCode");
+//                                                }
                                                 break;
                                             }
                                         }

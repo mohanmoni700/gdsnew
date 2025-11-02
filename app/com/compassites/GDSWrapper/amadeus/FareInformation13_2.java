@@ -124,6 +124,17 @@ public class FareInformation13_2 {
         }
         fareInfo.getSegmentGroup().addAll(segmentGroups);
 
+        // Add PTC to PricingOptionGroup
+        FareInformativePricingWithoutPNR.PricingOptionGroup ptcPricingOptionGroup =
+                new FareInformativePricingWithoutPNR.PricingOptionGroup();
+
+        PricingOptionKeyType ptcPricingOptionKey = new PricingOptionKeyType();
+        ptcPricingOptionKey.setPricingOptionKey("PTC");
+
+        ptcPricingOptionGroup.setPricingOptionKey(ptcPricingOptionKey);
+        fareInfo.getPricingOptionGroup().add(ptcPricingOptionGroup);
+
+
         if(isUpsell) {
             FareInformativePricingWithoutPNR.PricingOptionGroup pricingOption1 = new FareInformativePricingWithoutPNR.PricingOptionGroup();
             com.amadeus.xml.tipnrq_13_2_1a.PricingOptionKeyType pricingOptionKey1 = new com.amadeus.xml.tipnrq_13_2_1a.PricingOptionKeyType();

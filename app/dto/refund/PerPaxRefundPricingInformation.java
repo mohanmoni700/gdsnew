@@ -20,6 +20,8 @@ public class PerPaxRefundPricingInformation {
 
     private String refundedAmountCurrency;
 
+    private String paxType;
+
     private List<DetailedMonetaryInformation> detailedMonetaryInformationList;
 
     private List<DetailedTaxInformation> detailedTaxInformationList;
@@ -114,6 +116,13 @@ public class PerPaxRefundPricingInformation {
 
     public void setDetailedCommissionInformationList(List<DetailedCommissionInformation> detailedCommissionInformationList) {
         this.detailedCommissionInformationList = detailedCommissionInformationList;
+    }
+    public String getPaxType() {
+        return paxType;
+    }
+
+    public void setPaxType(String paxType) {
+        this.paxType = paxType;
     }
 
 }

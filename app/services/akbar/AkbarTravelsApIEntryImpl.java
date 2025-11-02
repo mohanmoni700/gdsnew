@@ -6,6 +6,8 @@ import com.compassites.model.traveller.TravellerMasterInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dto.FareCheckRulesResponse;
+import dto.refund.AkbarCancelOrRefundRequest;
+import dto.refund.GetRefundAmountRequest;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,9 +22,9 @@ import java.util.concurrent.TimeUnit;
 public class AkbarTravelsApIEntryImpl implements AkbarTravelsApIEntry {
 
     private static final OkHttpClient client = new OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
             .build();
 
 
@@ -219,6 +221,82 @@ public class AkbarTravelsApIEntryImpl implements AkbarTravelsApIEntry {
         } catch (Exception e) {
             logger.error("Error during Paid Ancillary : {}", e.getMessage(), e);
             return null;
+        }
+    }
+
+    @Override
+    public TicketCheckEligibilityRes getRefundableAmount(GetRefundAmountRequest getRefundAmountRequest) {
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jsonString = objectMapper.writeValueAsString(getRefundAmountRequest);
+            RequestBody requestBody = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
+            String url = endPoint + AkbarConstants.getRefundableAmount;
+            Request request = new Request.Builder().url(url).post(requestBody).build();
+
+            akbarLogger.info("Akbar Get Refund Amount Request: {}", jsonString);
+            logger.info("Akbar Get Refund Amount Request: {}", jsonString);
+
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful()) {
+                    String responseBody = response.body().string();
+                    TicketCheckEligibilityRes ticketCheckEligibilityRes = objectMapper.readValue(responseBody, TicketCheckEligibilityRes.class);
+                    akbarLogger.debug("Akbar Get Refund Amount Response: {}", responseBody);
+
+                    return ticketCheckEligibilityRes;
+                } else {
+                    logger.error("Failed to Get Refund Amount from Akbar API: {} for TUI: {}", response.message(), Json.toJson(getRefundAmountRequest.getTui()));
+                    throw new Exception("Failed to Get Refund Amount from Akbar API: " + response.message());
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error during Get Refund Amount: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    @Override
+    public TicketProcessRefundRes confirmRefund(AkbarCancelOrRefundRequest akbarCancelOrRefundRequest) {
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jsonString = objectMapper.writeValueAsString(akbarCancelOrRefundRequest);
+            RequestBody requestBody = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
+            String url = endPoint + AkbarConstants.confirmRefund;
+            Request request = new Request.Builder().url(url).post(requestBody).build();
+
+            akbarLogger.info("Akbar Confirm Refund Request: {}", jsonString);
+            logger.info("Akbar Confirm Refund Request: {}", jsonString);
+
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful()) {
+                    String responseBody = response.body().string();
+                    TicketProcessRefundRes ticketProcessRefundRes = objectMapper.readValue(responseBody, TicketProcessRefundRes.class);
+                    akbarLogger.debug("Akbar Confirm Refund Response: {}", responseBody);
+
+                    return ticketProcessRefundRes;
+                } else {
+                    logger.error("Failed to Confirm Refund from Akbar API: {} for TUI: {}", response.message(), Json.toJson(akbarCancelOrRefundRequest.getTui()));
+
+                    TicketProcessRefundRes ticketProcessRefundRes = new TicketProcessRefundRes();
+                    ErrorMessage errorMessage = new ErrorMessage();
+                    errorMessage.setErrorCode("Confirm Refund Failed");
+                    ticketProcessRefundRes.setMessage(errorMessage);
+                    ticketProcessRefundRes.setStatus(false);
+
+                    return ticketProcessRefundRes;
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error during Confirm Refund: {}", e.getMessage(), e);
+
+            TicketProcessRefundRes ticketProcessRefundRes = new TicketProcessRefundRes();
+            ErrorMessage errorMessage = new ErrorMessage();
+            errorMessage.setErrorCode("Confirm Refund Failed : " + e.getMessage());
+            ticketProcessRefundRes.setMessage(errorMessage);
+            ticketProcessRefundRes.setStatus(false);
+
+            return ticketProcessRefundRes;
         }
     }
 

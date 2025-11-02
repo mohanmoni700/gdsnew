@@ -3,6 +3,8 @@ package services.akbar;
 import com.compassites.model.*;
 import com.compassites.model.traveller.TravellerMasterInfo;
 import dto.FareCheckRulesResponse;
+import dto.refund.AkbarCancelOrRefundRequest;
+import dto.refund.GetRefundAmountRequest;
 
 import java.util.Map;
 
@@ -19,4 +21,9 @@ public interface AkbarTravelsApIEntry {
     IssuanceResponse completePaymentAndIssueTicket(IssuanceRequest issuanceRequest);
 
     AncillaryServicesResponse getPaidAncillaryAtPaxInfoPage(TravellerMasterInfo travellerMasterInfo);
+
+    TicketCheckEligibilityRes getRefundableAmount(GetRefundAmountRequest getRefundAmountRequest);
+
+    TicketProcessRefundRes confirmRefund(AkbarCancelOrRefundRequest akbarCancelOrRefundRequest);
+
 }

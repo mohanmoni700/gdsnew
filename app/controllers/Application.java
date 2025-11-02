@@ -19,6 +19,8 @@ import dto.Upsell.*;
 import dto.ancillary.AncillaryBookingRequest;
 import dto.ancillary.AncillaryBookingResponse;
 import dto.queueManagement.*;
+import dto.refund.AkbarCancelOrRefundRequest;
+import dto.refund.GetRefundAmountRequest;
 import dto.reissue.ReIssueConfirmationRequest;
 import dto.reissue.ReIssueSearchRequest;
 import models.AncillaryServiceRequest;
@@ -726,7 +728,11 @@ public class Application {
         String searchOfficeId = json.get("searchOffice").asText();
         String ticketingOfficeId = json.get("ticketingOfficeId").asText();
         Boolean isSeamen = json.get("isSeamen").asBoolean();
-        ticketCheckEligibilityRes = refundServiceWrapper.checkTicketEligibility(provider, gdspnr, searchOfficeId, ticketingOfficeId, isSeamen);
+        GetRefundAmountRequest getRefundAmountRequest = null;
+        if (provider.equalsIgnoreCase("Akbar") && json.get("getRefundAmountRequest") != null) {
+            getRefundAmountRequest = Json.fromJson(json.get("getRefundAmountRequest"), GetRefundAmountRequest.class);
+        }
+        ticketCheckEligibilityRes = refundServiceWrapper.checkTicketEligibility(provider, gdspnr, searchOfficeId, ticketingOfficeId,isSeamen,getRefundAmountRequest);
         return ok(Json.toJson(ticketCheckEligibilityRes));
     }
 
@@ -739,7 +745,11 @@ public class Application {
         String searchOfficeId = json.get("searchOffice").asText();
         String ticketingOfficeId = json.get("ticketingOfficeId").asText();
         TravellerMasterInfo travellerMasterInfo = Json.fromJson(json.findPath("masterInfo"), TravellerMasterInfo.class);
-        ticketProcessRefundRes = refundServiceWrapper.processFullRefund(provider, gdspnr, searchOfficeId, ticketingOfficeId, travellerMasterInfo);
+        AkbarCancelOrRefundRequest akbarCancelOrRefundRequest = null;
+        if (provider.equalsIgnoreCase("Akbar") && json.get("akbarCancelOrRefundRequest") != null) {
+            akbarCancelOrRefundRequest = Json.fromJson(json.findPath("akbarCancelOrRefundRequest"), AkbarCancelOrRefundRequest.class);
+        }
+        ticketProcessRefundRes = refundServiceWrapper.processFullRefund(provider, gdspnr, searchOfficeId, ticketingOfficeId, travellerMasterInfo, akbarCancelOrRefundRequest);
         return ok(Json.toJson(ticketProcessRefundRes));
     }
 
@@ -766,7 +776,11 @@ public class Application {
                 ticketIdsList.add(ticketIdNode.asText());
             }
         }
-        ticketCheckEligibilityRes = refundServiceWrapper.checkPartRefundTicketEligibility(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId, ticketIdsList,isSeamen);
+        GetRefundAmountRequest getRefundAmountRequest = null;
+        if (provider.equalsIgnoreCase("Akbar") && json.get("getRefundAmountRequest") != null) {
+            getRefundAmountRequest = Json.fromJson(json.get("getRefundAmountRequest"), GetRefundAmountRequest.class);
+        }
+        ticketCheckEligibilityRes = refundServiceWrapper.checkPartRefundTicketEligibility(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId, ticketIdsList,isSeamen, getRefundAmountRequest);
         return ok(Json.toJson(ticketCheckEligibilityRes));
     }
 
@@ -794,8 +808,11 @@ public class Application {
                 new TypeReference<List<IndigoPaxNumber>>() {
                 }
         );
-
-        ticketProcessRefundRes = refundServiceWrapper.processPartialRefund(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId, indigoPaxNumbers, travellerMasterInfo);
+        AkbarCancelOrRefundRequest akbarCancelOrRefundRequest = null;
+        if (provider.equalsIgnoreCase("Akbar") && json.get("akbarCancelOrRefundRequest") != null) {
+            akbarCancelOrRefundRequest = Json.fromJson(json.findPath("akbarCancelOrRefundRequest"), AkbarCancelOrRefundRequest.class);
+        }
+        ticketProcessRefundRes = refundServiceWrapper.processPartialRefund(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId, indigoPaxNumbers, travellerMasterInfo,akbarCancelOrRefundRequest);
         logger.debug("Ticket process refund response {} ", Json.toJson(ticketProcessRefundRes));
         return ok(Json.toJson(ticketProcessRefundRes));
     }

@@ -877,7 +877,12 @@ private FlightItinerary updateFlightItinerary(List<PassengerPricingDetail> passe
                 for (FareJourney fareJourney : paxFareDetail.getFareJourneyList()) {
                     for (FareSegment fareSegment : fareJourney.getFareSegmentList()) {
 
-                        String segmentKey = fareSegment.getSegment(); // e.g., "SIN-DXB:2025-10-24T00:50:00.000+08:00"
+                        String segmentKey = fareSegment.getSegment(); // "SIN-DXB:2025-10-24T00:50:00.000+08:00"
+
+                        if (segmentKey == null || segmentKey.isEmpty()) {
+                            logger.warn("Segment is null or empty for passengerType: {}, skipping", passengerType);
+                            continue;
+                        }
 
                         Map<PassengerTypeCode, String> paxMap = segmentFareBasisMap.getOrDefault(segmentKey, new HashMap<>());
                         paxMap.put(passengerType, fareSegment.getFareBasis());
@@ -900,6 +905,7 @@ private FlightItinerary updateFlightItinerary(List<PassengerPricingDetail> passe
             for (Journey journey : journeyList) {
                 for (AirSegmentInformation airSegment : journey.getAirSegmentList()) {
                     for (Map.Entry<String, Map<PassengerTypeCode, String>> entry : segmentFareBasisMap.entrySet()) {
+
                         String segment = entry.getKey();
 
                         int colonIndex = segment.indexOf(':');
@@ -935,6 +941,7 @@ private FlightItinerary updateFlightItinerary(List<PassengerPricingDetail> passe
 
                         }
                     }
+
                 }
             }
 
@@ -1067,6 +1074,11 @@ private FlightItinerary updateFlightItinerary(List<PassengerPricingDetail> passe
 
                     for (FareJourney fareJourney : paxFareDetail.getFareJourneyList()) {
                         for (FareSegment fareSegment : fareJourney.getFareSegmentList()) {
+
+                            if (fareSegment.getSegment() == null || fareSegment.getSegment().isEmpty()) {
+                                logger.warn("Segment is null or empty for paxType: {}, skipping this segment", paxType);
+                                continue;
+                            }
 
                             // Extract origin, destination, and departure timestamp from segment string
                             String[] segmentParts = fareSegment.getSegment().split(":");
