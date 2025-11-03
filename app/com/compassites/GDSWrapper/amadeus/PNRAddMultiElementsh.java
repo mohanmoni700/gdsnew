@@ -1,28 +1,29 @@
 package com.compassites.GDSWrapper.amadeus;
 
 import com.amadeus.xml.pnradd_14_1_1a.*;
+import com.amadeus.xml.pnradd_14_1_1a.PNRAddMultiElements.DataElementsMaster.DataElementsIndiv;
 import com.amadeus.xml.pnrxcl_14_1_1a.CancelPNRElementType;
 import com.amadeus.xml.pnrxcl_14_1_1a.PNRCancel;
 import com.amadeus.xml.pnrxcl_14_1_1a.ReservationControlInformationType;
-import com.amadeus.xml.pnradd_14_1_1a.PNRAddMultiElements.DataElementsMaster.DataElementsIndiv;
-
 import com.compassites.constants.AmadeusConstants;
 import com.compassites.model.*;
 import com.compassites.model.traveller.*;
 import models.NationalityDao;
-
-import org.joda.time.*;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
-
+import play.Play;
 import utils.DateUtility;
 import utils.StringUtility;
 
 import java.math.BigInteger;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.Period;
 import java.util.*;
 
 
@@ -1587,7 +1588,46 @@ System.out.println("**********getMultiElements**********"+travellerMasterInfo.ge
 
             rcEntryElementList.add(vesselNameData);
 
+            //Passport About to Expire warning set here
 
+            List<Journey> journeyList = travellerMasterInfo.getItinerary().getJourneyList();
+            Journey journey = journeyList.get(journeyList.size() - 1);
+            Date lastDepartureTime = journey.getAirSegmentList().stream().max(Comparator.comparing(AirSegmentInformation::getDepartureDate)).map(AirSegmentInformation::getDepartureDate).orElse(null);
+            if (lastDepartureTime != null) {
+                List<Traveller> travellersList=travellerMasterInfo.getTravellersList();
+                int paxRefCount = 1;
+                for (Traveller traveller : travellersList) {
+                    if (traveller.getPassportDetails() != null && traveller.getPassportDetails().getDateOfExpiry() != null) {
+                        Period period = DateUtility.getDifferenceBetweenTime(lastDepartureTime, traveller.getPassportDetails().getDateOfExpiry());
+                        if(period.getYears()>0){
+                            period=period.plusMonths(period.getYears()* 12L);
+                        }
+                        Integer maxExpiryTimeOfPassportInMonths = Play.application().configuration().getInt("rc.maxExpiryTimeOfPassportInMonths");
+                        if (period.getMonths() < maxExpiryTimeOfPassportInMonths || (period.getMonths() == maxExpiryTimeOfPassportInMonths && period.getDays() <= 0)) {
+                            DataElementsIndiv passportExpiryData = new DataElementsIndiv();
+                            ElementManagementSegmentType passportExpiryWarningElement = new ElementManagementSegmentType();
+                            ReferencingDetailsType passportExpiryWarningReference = new ReferencingDetailsType();
+                            MiscellaneousRemarksType passportExpiryWarningRemarks = new MiscellaneousRemarksType();
+                            MiscellaneousRemarkType remarks6 = new MiscellaneousRemarkType();
+                            passportExpiryWarningElement.setSegmentName("RC");
+                            passportExpiryWarningReference.setQualifier("OT");
+                            passportExpiryWarningReference.setNumber("13");
+                            passportExpiryWarningElement.setReference(passportExpiryWarningReference);
+                            passportExpiryData.setElementManagementData(passportExpiryWarningElement);
+                            remarks6.setType("RC");
+                            DateFormat formatter = new SimpleDateFormat("ddMMMyy");
+                            String warningText = "JOCO GAVE WARNING | BOOKER CONTINUED BOOKING";
+                            String paxRef = "P/"+paxRefCount;
+                            remarks6.setFreetext(paxRef +" passport expiring on "+formatter.format(traveller.getPassportDetails().getDateOfExpiry())+" | " +warningText);
+                            passportExpiryWarningRemarks.setRemarks(remarks6);
+                            passportExpiryData.setMiscellaneousRemark(passportExpiryWarningRemarks);
+
+                            rcEntryElementList.add(passportExpiryData);
+                        }
+                    }
+                    paxRefCount ++;
+                }
+            }
         } catch (Exception e) {
             logger.debug("Error while setting RC Entry {} ", e.getMessage(), e);
         }
@@ -1625,6 +1665,34 @@ System.out.println("**********getMultiElements**********"+travellerMasterInfo.ge
         element.setDataElementsMaster(dataElementsMaster);
 
         return element;
+    }
+
+    public static String getFullName(String firstName, String middleName, String lastName){
+        String fullName = "";
+        String fstName="";
+        String lstName="";
+        String midName="";
+        if(!"Mr".equalsIgnoreCase(middleName) && !"Ms".equalsIgnoreCase(middleName)
+                && !"Mrs".equalsIgnoreCase(middleName) && !"Miss".equalsIgnoreCase(middleName)
+                && !"Master".equalsIgnoreCase(middleName) && middleName !="") {
+            midName = " "+middleName+" ";
+        }
+        if(middleName == null){
+            midName="";
+        }
+        if(firstName != null) {
+            if (!firstName.equalsIgnoreCase("FNU")) {
+                fstName = firstName;
+            }
+        }
+
+        if(lastName != null) {
+            if (!lastName.equalsIgnoreCase("LNU")) {
+                lstName = lastName;
+            }
+        }
+        fullName = fstName+midName+lstName;
+        return fullName.trim();
     }
 
 }

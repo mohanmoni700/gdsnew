@@ -1,9 +1,6 @@
 package utils;
 
 import com.compassites.model.PassengerTypeCode;
-import org.joda.time.LocalDate;
-import org.joda.time.Period;
-import org.joda.time.PeriodType;
 import org.joda.time.*;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
@@ -12,6 +9,7 @@ import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.Duration;
 import java.text.SimpleDateFormat;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
@@ -102,6 +100,18 @@ public class DateUtility {
         return duration;
     }
 
+    public static java.time.Period getDifferenceBetweenTime(Date fromTime, Date toTime) {
+        if (fromTime == null || toTime == null) {
+            throw new IllegalArgumentException("Dates cannot be null");
+        }
+        java.time.LocalDate fromDate = fromTime.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
 
+        java.time.LocalDate toDate = toTime.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        return java.time.Period.between(fromDate, toDate);
+    }
 
 }
