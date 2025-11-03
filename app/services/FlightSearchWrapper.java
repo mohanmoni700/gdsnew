@@ -319,12 +319,24 @@ public class FlightSearchWrapper {
     private void printSearchTimingTable(Map<String, Map<String, Long>> officeTimingMap, 
                                        Map<String, String> officeBookingTypeMap, 
                                        long totalSearchDuration) {
-        System.out.println("\n===========================================");
-        System.out.println("    SEARCH TIMING SUMMARY TABLE");
-        System.out.println("===========================================");
-        System.out.println(String.format("%-15s | %-12s | %-15s | %-20s | %-20s | %-15s", 
-                                        "Office ID", "Booking Type", "Total Search (sec)", "Seamen Time (sec)", "Non-Seamen Time (sec)", "Processing (sec)"));
-        System.out.println("-----------------|-------------|-----------------|----------------------|----------------------|-----------------");
+        String headerTop = "\n===========================================";
+        String headerTitle = "    SEARCH TIMING SUMMARY TABLE";
+        String headerLine = "===========================================";
+        String headerCols = String.format("%-15s | %-12s | %-15s | %-20s | %-20s | %-15s", 
+                                        "Office ID", "Booking Type", "Total Search (sec)", "Seamen Time (sec)", "Non-Seamen Time (sec)", "Processing (sec)");
+        String headerSep = "-----------------|-------------|-----------------|----------------------|----------------------|-----------------";
+
+        // Console + Logger header
+        System.out.println(headerTop);
+        System.out.println(headerTitle);
+        System.out.println(headerLine);
+        System.out.println(headerCols);
+        System.out.println(headerSep);
+        logger.debug(headerTop);
+        logger.debug(headerTitle);
+        logger.debug(headerLine);
+        logger.debug(headerCols);
+        logger.debug(headerSep);
         
         for (Map.Entry<String, Map<String, Long>> entry : officeTimingMap.entrySet()) {
             String officeId = entry.getKey();
@@ -341,14 +353,22 @@ public class FlightSearchWrapper {
             double nonSeamenSeconds = nonSeamenDuration / 1000.0;
             double processingSeconds = processingDuration / 1000.0;
             
-            System.out.println(String.format("%-15s | %-12s | %15.3f | %20.3f | %20.3f | %15.3f", 
-                                            officeId, bookingType, searchSeconds, seamenSeconds, nonSeamenSeconds, processingSeconds));
+            String row = String.format("%-15s | %-12s | %15.3f | %20.3f | %20.3f | %15.3f", 
+                                            officeId, bookingType, searchSeconds, seamenSeconds, nonSeamenSeconds, processingSeconds);
+            System.out.println(row);
+            logger.debug(row);
         }
-        
-        System.out.println("-----------------|-------------|-----------------|----------------------|----------------------|-----------------");
-        System.out.println(String.format("%-15s | %-12s | %15.3f", 
-                                        "TOTAL", "", totalSearchDuration / 1000.0));
-        System.out.println("===========================================\n");
+        String footerSep = "-----------------|-------------|-----------------|----------------------|----------------------|-----------------";
+        String totalRow = String.format("%-15s | %-12s | %15.3f", 
+                                        "TOTAL", "", totalSearchDuration / 1000.0);
+        String footerEnd = "===========================================\n";
+
+        System.out.println(footerSep);
+        System.out.println(totalRow);
+        System.out.println(footerEnd);
+        logger.debug(footerSep);
+        logger.debug(totalRow);
+        logger.debug("===========================================");
         /*
         logger.debug("HashMap Size: "+hashMap.size());
         SearchResponse searchResponse=new SearchResponse();
