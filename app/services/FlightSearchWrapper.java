@@ -690,14 +690,14 @@ public class FlightSearchWrapper {
             for (Integer hashKey : seamenFareHash.keySet()) {
                 FlightItinerary seamenItinerary = seamenFareHash.get(hashKey);
                 if (allFightItineraries.containsKey(hashKey)) {
-                    FlightItinerary itinerary = allFightItineraries.get(hashKey);
-                    itinerary.setPriceOnlyPTC(true);
+                    FlightItinerary combiningItinerary = allFightItineraries.get(hashKey);
+                    combiningItinerary.setPriceOnlyPTC(true);
                     //System.out.println("Price "+Json.toJson(seamenFareHash.get(hashKey).getPricingInformation()));
-                    itinerary.setSeamanPricingInformation(seamenFareHash.get(hashKey).getPricingInformation());
-                    itinerary.setJourneyList(seamenFareHash.get(hashKey).getJourneyList());
-                    itinerary.setNonSeamenJourneyList(allFightItineraries.get(hashKey).getJourneyList());
+                    combiningItinerary.setSeamanPricingInformation(seamenFareHash.get(hashKey).getPricingInformation());
+                    combiningItinerary.setJourneyList(seamenFareHash.get(hashKey).getJourneyList());
+//                    combiningItinerary.setNonSeamenJourneyList(allFightItineraries.get(hashKey).getJourneyList());
 
-                    allFightItineraries.put(hashKey, itinerary);
+                    allFightItineraries.put(hashKey, combiningItinerary);
                 } else {
                     seamenItinerary.setPriceOnlyPTC(true);
                     seamenItinerary.setSeamanPricingInformation(seamenItinerary.getPricingInformation());

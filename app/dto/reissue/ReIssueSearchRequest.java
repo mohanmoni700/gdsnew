@@ -44,6 +44,10 @@ public class ReIssueSearchRequest implements Serializable {
 
     private String ticketingOfficeId;
 
+    private Long akbarTransactionId;
+
+    private Long crewOpId;
+
     public boolean isSeaman() {
         return isSeaman;
     }
@@ -171,6 +175,22 @@ public class ReIssueSearchRequest implements Serializable {
 
     public void setTicketingOfficeId(String ticketingOfficeId) {
         this.ticketingOfficeId = ticketingOfficeId;
+    }
+
+    public Long getAkbarTransactionId() {
+        return akbarTransactionId;
+    }
+
+    public void setAkbarTransactionId(Long akbarTransactionId) {
+        this.akbarTransactionId = akbarTransactionId;
+    }
+
+    public Long getCrewOpId() {
+        return crewOpId;
+    }
+
+    public void setCrewOpId(Long crewOpId) {
+        this.crewOpId = crewOpId;
     }
 
     public BookingType getBookingType() {
