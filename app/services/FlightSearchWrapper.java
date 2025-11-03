@@ -40,8 +40,14 @@ public class FlightSearchWrapper {
 
     public void search(final SearchParameters searchParameters) {
         final String redisKey = searchParameters.redisKey();
+        long totalSearchStartTime = System.currentTimeMillis();
+        
+        // Map to store timing information for each office
+        Map<String, Map<String, Long>> officeTimingMap = new ConcurrentHashMap<>();
+        Map<String, String> officeBookingTypeMap = new ConcurrentHashMap<>();
 
         logger.debug("\n\n***********SEARCH STARTED key: [" + redisKey + "]***********");
+        System.out.println("***********SEARCH STARTED key: [" + redisKey + "]***********");
 
         //long startTime = System.currentTimeMillis();
         //SearchResponse searchResponseList = new SearchResponse();
@@ -73,13 +79,44 @@ public class FlightSearchWrapper {
                             providerStatusCacheKey = redisKey + flightSearch.provider() +":"+ office.getOfficeId()+ "status";
                             if (!checkOrSetStatus(providerStatusCacheKey)) {
                                 String finalProviderStatusCacheKey = providerStatusCacheKey;
+                                String officeId = office.getOfficeId();
+                                String bookingType = searchParameters.getBookingType() != null ? searchParameters.getBookingType().toString() : "UNKNOWN";
+                                officeBookingTypeMap.put(officeId, bookingType);
+                                
+                                // Initialize timing map for this office
+                                Map<String, Long> timing = new ConcurrentHashMap<>();
+                                timing.put("searchStartTime", System.currentTimeMillis());
+                                timing.put("seamenStartTime", 0L);
+                                timing.put("nonSeamenStartTime", 0L);
+                                timing.put("seamenDuration", 0L);
+                                timing.put("nonSeamenDuration", 0L);
+                                officeTimingMap.put(officeId, timing);
+                                
+                                System.out.println("Starting search for office: " + officeId + " at " + new java.util.Date() + " - Booking Type: " + bookingType);
+                                
                                 futureSearchResponseList.add(newExecutor.submit(new Callable<SearchResponse>() {
                                     public SearchResponse call() throws Exception {
+                                        long searchStartTime = System.currentTimeMillis();
                                         SearchResponse response = flightSearch.search(searchParameters, office);
-                                            logger.debug("1-[" + redisKey + "]Response from provider:" + flightSearch.provider() + "  officeId:" + office.getOfficeId());
+                                        long searchEndTime = System.currentTimeMillis();
+                                        long searchDuration = searchEndTime - searchStartTime;
+                                        
+                                        // Update timing map
+                                        if (officeTimingMap.containsKey(officeId)) {
+                                            Map<String, Long> officeTiming = officeTimingMap.get(officeId);
+                                            officeTiming.put("searchDuration", searchDuration);
+                                            officeTiming.put("searchEndTime", searchEndTime);
+                                        }
+                                        
+                                        logger.debug("1-[" + redisKey + "]Response from provider:" + flightSearch.provider() + "  officeId:" + officeId + " completed in " + searchDuration + " ms");
+                                        System.out.println("Office " + officeId + " search completed in " + searchDuration + " ms (" + (searchDuration / 1000.0) + " seconds)");
+                                        
                                             //logger.debug("response " + Json.toJson(response));
                                             if (checkResponseAndSetStatus(response, finalProviderStatusCacheKey)) {
-                                                logger.debug("2-[" + redisKey + "]Response from provider:" + flightSearch.provider() + "  officeId:" + office.getOfficeId() + "  size: " + response.getAirSolution().getFlightItineraryList().size());
+                                                int seamenSize = response.getAirSolution().getSeamenHashMap() != null ? response.getAirSolution().getSeamenHashMap().size() : 0;
+                                                int nonSeamenSize = response.getAirSolution().getNonSeamenHashMap() != null ? response.getAirSolution().getNonSeamenHashMap().size() : 0;
+                                                logger.debug("2-[" + redisKey + "]Response from provider:" + flightSearch.provider() + "  officeId:" + officeId + "  Seamen size: " + seamenSize + " | Non-Seamen size: " + nonSeamenSize);
+                                                System.out.println("Office " + officeId + " results - Seamen: " + seamenSize + ", Non-Seamen: " + nonSeamenSize);
                                             }
 
                                             return response;
@@ -170,17 +207,42 @@ public class FlightSearchWrapper {
                     //counter++;
 
                     if(searchResponse != null && searchResponse.getFlightSearchOffice() !=null && searchResponse.getErrorMessageList().size() == 0){
-                        //logger.debug("3-["+redisKey+"]Received Response "+ counter +"  | from : " + searchResponse.getProvider()+  "   | office:"+ searchResponse.getFlightSearchOffice().getOfficeId()  +"  | Seaman size: " + searchResponse.getAirSolution().getSeamenHashMap().size() + " | normal size:"+searchResponse.getAirSolution().getNonSeamenHashMap().size() );
+                        String officeId = searchResponse.getFlightSearchOffice().getOfficeId();
+                        long processingStartTime = System.currentTimeMillis();
+                        
+                        // Track seamen and non-seamen processing times
+                        long seamenProcessingStartTime = System.currentTimeMillis();
+                        int seamenSize = searchResponse.getAirSolution().getSeamenHashMap() != null ? searchResponse.getAirSolution().getSeamenHashMap().size() : 0;
+                        long seamenProcessingEndTime = System.currentTimeMillis();
+                        long seamenProcessingDuration = seamenProcessingEndTime - seamenProcessingStartTime;
+                        
+                        long nonSeamenProcessingStartTime = System.currentTimeMillis();
+                        int nonSeamenSize = searchResponse.getAirSolution().getNonSeamenHashMap() != null ? searchResponse.getAirSolution().getNonSeamenHashMap().size() : 0;
+                        long nonSeamenProcessingEndTime = System.currentTimeMillis();
+                        long nonSeamenProcessingDuration = nonSeamenProcessingEndTime - nonSeamenProcessingStartTime;
+                        
+                        // Update timing map
+                        if (officeTimingMap.containsKey(officeId)) {
+                            Map<String, Long> officeTiming = officeTimingMap.get(officeId);
+                            officeTiming.put("seamenDuration", seamenProcessingDuration);
+                            officeTiming.put("nonSeamenDuration", nonSeamenProcessingDuration);
+                            officeTiming.put("processingDuration", System.currentTimeMillis() - processingStartTime);
+                        }
+                        
+                        logger.debug("3-["+redisKey+"]Received Response "+ counter +"  | from : " + searchResponse.getProvider()+  "   | office:"+ officeId  +"  | Seaman size: " + seamenSize + " | normal size:"+ nonSeamenSize);
+                        System.out.println("Processing response " + counter + " from office: " + officeId + " - Seamen: " + seamenSize + ", Non-Seamen: " + nonSeamenSize);
+                        System.out.println("Office " + officeId + " - Seamen processing: " + seamenProcessingDuration + " ms (" + (seamenProcessingDuration / 1000.0) + " sec), Non-Seamen processing: " + nonSeamenProcessingDuration + " ms (" + (nonSeamenProcessingDuration / 1000.0) + " sec)");
+                        
                         SearchResponse searchResponseCache=new SearchResponse();
                         searchResponseCache.setFlightSearchOffice(searchResponse.getFlightSearchOffice());
                         searchResponseCache.setProvider(searchResponse.getProvider());
                         logger.debug("Provider "+searchResponse.getProvider());
                         //logger.debug("counter :"+counter+"Search Response FligthItinary Size: "+searchResponse.getAirSolution().getFlightItineraryList().size());
-                        logger.debug("\n\n----------- before MergeResults "+ counter +"--------"+ searchResponse.getFlightSearchOffice().getOfficeId());
+                        logger.debug("\n\n----------- before MergeResults "+ counter +"--------"+ officeId);
                         //AmadeusFlightSearch.printHashmap(hashMap,false);
                         mergeResults(hashMap, searchResponse);
                         logger.debug("hashMap "+Json.toJson(hashMap));
-                        logger.debug("----------- After MergeResults "+ counter +"--------" +searchResponse.getFlightSearchOffice().getOfficeId());
+                        logger.debug("----------- After MergeResults "+ counter +"--------" + officeId);
                         //AmadeusFlightSearch.printHashmap(hashMap,false);
                         errorMessageList.addAll(searchResponse.getErrorMessageList());
                         AirSolution airSolution = new AirSolution();
@@ -226,7 +288,16 @@ public class FlightSearchWrapper {
                 }
                 redisTemplate.opsForValue().set(searchParameters.redisKey()+":status", "complete");
                 redisTemplate.expire(searchParameters.redisKey()+":status",timeout,TimeUnit.SECONDS);
-                logger.debug("***********SEARCH END key: ["+ redisKey +"]***********");
+                
+                long totalSearchEndTime = System.currentTimeMillis();
+                long totalSearchDuration = totalSearchEndTime - totalSearchStartTime;
+                
+                logger.debug("***********SEARCH END key: ["+ redisKey +"]*********** Total time: " + totalSearchDuration + " ms");
+                System.out.println("\n***********SEARCH END key: ["+ redisKey +"]***********");
+                System.out.println("Total Search Duration: " + totalSearchDuration + " ms (" + (totalSearchDuration / 1000.0) + " seconds)");
+                
+                // Print table format summary
+                printSearchTimingTable(officeTimingMap, officeBookingTypeMap, totalSearchDuration);
             }
         }
 
@@ -240,6 +311,64 @@ public class FlightSearchWrapper {
                         newExecutor.getTaskCount(),
                         newExecutor.isShutdown(),
                         newExecutor.isTerminated()));
+    }
+
+    /**
+     * Prints a formatted table showing search timing for each office ID
+     */
+    private void printSearchTimingTable(Map<String, Map<String, Long>> officeTimingMap, 
+                                       Map<String, String> officeBookingTypeMap, 
+                                       long totalSearchDuration) {
+        String headerTop = "\n===========================================";
+        String headerTitle = "    SEARCH TIMING SUMMARY TABLE";
+        String headerLine = "===========================================";
+        String headerCols = String.format("%-15s | %-12s | %-15s | %-20s | %-20s | %-15s", 
+                                        "Office ID", "Booking Type", "Total Search (sec)", "Seamen Time (sec)", "Non-Seamen Time (sec)", "Processing (sec)");
+        String headerSep = "-----------------|-------------|-----------------|----------------------|----------------------|-----------------";
+
+        // Console + Logger header
+        System.out.println(headerTop);
+        System.out.println(headerTitle);
+        System.out.println(headerLine);
+        System.out.println(headerCols);
+        System.out.println(headerSep);
+        logger.debug(headerTop);
+        logger.debug(headerTitle);
+        logger.debug(headerLine);
+        logger.debug(headerCols);
+        logger.debug(headerSep);
+        
+        for (Map.Entry<String, Map<String, Long>> entry : officeTimingMap.entrySet()) {
+            String officeId = entry.getKey();
+            Map<String, Long> timing = entry.getValue();
+            String bookingType = officeBookingTypeMap.getOrDefault(officeId, "UNKNOWN");
+            
+            long searchDuration = timing.getOrDefault("searchDuration", 0L);
+            long seamenDuration = timing.getOrDefault("seamenDuration", 0L);
+            long nonSeamenDuration = timing.getOrDefault("nonSeamenDuration", 0L);
+            long processingDuration = timing.getOrDefault("processingDuration", 0L);
+            
+            double searchSeconds = searchDuration / 1000.0;
+            double seamenSeconds = seamenDuration / 1000.0;
+            double nonSeamenSeconds = nonSeamenDuration / 1000.0;
+            double processingSeconds = processingDuration / 1000.0;
+            
+            String row = String.format("%-15s | %-12s | %15.3f | %20.3f | %20.3f | %15.3f", 
+                                            officeId, bookingType, searchSeconds, seamenSeconds, nonSeamenSeconds, processingSeconds);
+            System.out.println(row);
+            logger.debug(row);
+        }
+        String footerSep = "-----------------|-------------|-----------------|----------------------|----------------------|-----------------";
+        String totalRow = String.format("%-15s | %-12s | %15.3f", 
+                                        "TOTAL", "", totalSearchDuration / 1000.0);
+        String footerEnd = "===========================================\n";
+
+        System.out.println(footerSep);
+        System.out.println(totalRow);
+        System.out.println(footerEnd);
+        logger.debug(footerSep);
+        logger.debug(totalRow);
+        logger.debug("===========================================");
         /*
         logger.debug("HashMap Size: "+hashMap.size());
         SearchResponse searchResponse=new SearchResponse();
@@ -561,14 +690,14 @@ public class FlightSearchWrapper {
             for (Integer hashKey : seamenFareHash.keySet()) {
                 FlightItinerary seamenItinerary = seamenFareHash.get(hashKey);
                 if (allFightItineraries.containsKey(hashKey)) {
-                    FlightItinerary itinerary = allFightItineraries.get(hashKey);
-                    itinerary.setPriceOnlyPTC(true);
+                    FlightItinerary combiningItinerary = allFightItineraries.get(hashKey);
+                    combiningItinerary.setPriceOnlyPTC(true);
                     //System.out.println("Price "+Json.toJson(seamenFareHash.get(hashKey).getPricingInformation()));
-                    itinerary.setSeamanPricingInformation(seamenFareHash.get(hashKey).getPricingInformation());
-                    itinerary.setJourneyList(seamenFareHash.get(hashKey).getJourneyList());
-                    itinerary.setNonSeamenJourneyList(allFightItineraries.get(hashKey).getJourneyList());
+                    combiningItinerary.setSeamanPricingInformation(seamenFareHash.get(hashKey).getPricingInformation());
+                    combiningItinerary.setJourneyList(seamenFareHash.get(hashKey).getJourneyList());
+//                    combiningItinerary.setNonSeamenJourneyList(allFightItineraries.get(hashKey).getJourneyList());
 
-                    allFightItineraries.put(hashKey, itinerary);
+                    allFightItineraries.put(hashKey, combiningItinerary);
                 } else {
                     seamenItinerary.setPriceOnlyPTC(true);
                     seamenItinerary.setSeamanPricingInformation(seamenItinerary.getPricingInformation());

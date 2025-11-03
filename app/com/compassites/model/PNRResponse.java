@@ -1,6 +1,5 @@
 package com.compassites.model;
 
-import com.compassites.model.amadeus.AmadeusPaxInformation;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import dto.*;
 
@@ -54,11 +53,33 @@ public class PNRResponse implements Serializable  {
 
     private Map<String, String> segmentBaggageMap;
 
-    private Map<String, AmadeusSegmentRefDTO> segmentRefMap;
+    private Map<String, SegmentRefDTO> segmentRefMap;
 
     private Map<String,Double> carbonDioxide;
 
     private String expirationDate;
+
+    private String akbarTUI;
+
+    private Long akbarTransactionId;
+
+    private BigDecimal akbarNetAmt;
+
+    public BigDecimal getAkbarNetAmt() {
+        return akbarNetAmt;
+    }
+
+    public void setAkbarNetAmt(BigDecimal akbarNetAmt) {
+        this.akbarNetAmt = akbarNetAmt;
+    }
+
+    public Long getAkbarTransactionId() {
+        return akbarTransactionId;
+    }
+
+    public void setAkbarTransactionId(Long akbarTransactionId) {
+        this.akbarTransactionId = akbarTransactionId;
+    }
 
     private List<AirlineSpecificQueueAndTimeLimitDetails> airlineSpecificQueueAndTimeLimitDetailsList;
 
@@ -150,6 +171,16 @@ public class PNRResponse implements Serializable  {
 
     private String childPnr;
 
+    private String shoppingResponse;
+
+    private String russianOrderId;
+
+    private Map<String , String> russianOrderItemids;
+
+    private Map<String , String> russianPaxRef;
+
+    private List<String> russianPriceClassList;
+
     public String getChildPnr() {
         return childPnr;
     }
@@ -182,7 +213,7 @@ public class PNRResponse implements Serializable  {
         this.originalPNR = originalPNR;
     }
 
-    private List<AmadeusPaxInformation> amadeusPaxReference;
+    private List<PaxRefInformation> paxRefInformationList;
 
 
     public List<MealDetails> getTmxMealDetails() {
@@ -322,12 +353,12 @@ public class PNRResponse implements Serializable  {
         return validTillDate;
     }
 
-    public List<AmadeusPaxInformation> getAmadeusPaxReference() {
-        return amadeusPaxReference;
+    public List<PaxRefInformation> getPaxRefInformationList() {
+        return paxRefInformationList;
     }
 
-    public void setAmadeusPaxReference(List<AmadeusPaxInformation> amadeusPaxReference) {
-        this.amadeusPaxReference = amadeusPaxReference;
+    public void setPaxRefInformationList(List<PaxRefInformation> paxRefInformationList) {
+        this.paxRefInformationList = paxRefInformationList;
     }
     public void setValidTillDate(Date validTillDate) {
         this.validTillDate = validTillDate;
@@ -518,11 +549,11 @@ public class PNRResponse implements Serializable  {
     }
 
 
-    public Map<String, AmadeusSegmentRefDTO> getSegmentRefMap() {
+    public Map<String, SegmentRefDTO> getSegmentRefMap() {
         return segmentRefMap;
     }
 
-    public void setSegmentRefMap(Map<String, AmadeusSegmentRefDTO> segmentRefMap) {
+    public void setSegmentRefMap(Map<String, SegmentRefDTO> segmentRefMap) {
         this.segmentRefMap = segmentRefMap;
     }
 
@@ -548,5 +579,55 @@ public class PNRResponse implements Serializable  {
 
     public void setTicketPresent(boolean ticketPresent) {
         isTicketPresent = ticketPresent;
+    }
+
+    public String getAkbarTUI() {
+        return akbarTUI;
+    }
+
+    public void setAkbarTUI(String akbarTUI) {
+        this.akbarTUI = akbarTUI;
+    }
+
+    public String getShoppingResponse() {
+        return shoppingResponse;
+    }
+
+    public void setShoppingResponse(String shoppingResponse) {
+        this.shoppingResponse = shoppingResponse;
+    }
+
+    public String getRussianOrderId() {
+        return russianOrderId;
+    }
+
+    public void setRussianOrderId(String russianOrderId) {
+        this.russianOrderId = russianOrderId;
+    }
+
+
+
+    public List<String> getRussianPriceClassList() {
+        return russianPriceClassList;
+    }
+
+    public void setRussianPriceClassList(List<String> russianPriceClassList) {
+        this.russianPriceClassList = russianPriceClassList;
+    }
+
+    public Map<String, String> getRussianOrderItemids() {
+        return russianOrderItemids;
+    }
+
+    public void setRussianOrderItemids(Map<String, String> russianOrderItemids) {
+        this.russianOrderItemids = russianOrderItemids;
+    }
+
+    public Map<String, String> getRussianPaxRef() {
+        return russianPaxRef;
+    }
+
+    public void setRussianPaxRef(Map<String, String> russianPaxRef) {
+        this.russianPaxRef = russianPaxRef;
     }
 }

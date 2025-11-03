@@ -11,6 +11,15 @@ public class IndigoRefundRequest {
     private String ticketingOfficeId;
     private TravellerMasterInfo travellerMasterInfo;
     private List<String> ticketIdsList;
+    private Boolean isSeamen;
+
+    public Boolean getIsSeamen() {
+        return isSeamen;
+    }
+
+    public void setIsSeamen(Boolean isSeamen) {
+        this.isSeamen = isSeamen;
+    }
 
     public List<String> getTicketIdsList() {
         return ticketIdsList;

@@ -76,7 +76,6 @@ public class RussianFlightSearch implements FlightSearch {
                     searchResponse.setFlightSearchOffice(office);
                     searchResponse.setProvider("Russian");
                     return searchResponse;
-                    //throw new Exception("Failed to fetch data from Indigo API: " + response.message());
                 }
             }
         } catch (Exception e) {

@@ -54,6 +54,12 @@ public class IssuanceResponse implements Serializable{
 
     private boolean isIssued;
 
+    private String russianShoppingId;
+
+    private String russianOrderId;
+
+    private String russianTicketissueDate;
+
     private String expirationDate;
     private Map<String,String> splitTicketNumberMap;
 
@@ -306,5 +312,41 @@ public class IssuanceResponse implements Serializable{
 
     public void setFareCheckRulesResponseMap(Map<String, FareCheckRulesResponse> fareCheckRulesResponseMap) {
         this.fareCheckRulesResponseMap = fareCheckRulesResponseMap;
+    }
+
+    private Map<Long, String> ticketSegmentIDAndTicketNumberMap;
+
+    public Map<Long, String> getTicketSegmentIDAndTicketNumberMap() {
+        return ticketSegmentIDAndTicketNumberMap;
+    }
+
+    public void setTicketSegmentIDAndTicketNumberMap(Map<Long, String> ticketSegmentIDAndTicketNumberMap) {
+        this.ticketSegmentIDAndTicketNumberMap = ticketSegmentIDAndTicketNumberMap;
+    }
+
+
+
+    public String getRussianShoppingId() {
+        return russianShoppingId;
+    }
+
+    public void setRussianShoppingId(String russianShoppingId) {
+        this.russianShoppingId = russianShoppingId;
+    }
+
+    public String getRussianOrderId() {
+        return russianOrderId;
+    }
+
+    public void setRussianOrderId(String russianOrderId) {
+        this.russianOrderId = russianOrderId;
+    }
+
+    public String getRussianTicketissueDate() {
+        return russianTicketissueDate;
+    }
+
+    public void setRussianTicketissueDate(String russianTicketissueDate) {
+        this.russianTicketissueDate = russianTicketissueDate;
     }
 }

@@ -9,7 +9,7 @@ import com.compassites.constants.AmadeusConstants;
 import com.compassites.constants.StaticConstatnts;
 import com.compassites.exceptions.BaseCompassitesException;
 import com.compassites.model.*;
-import com.compassites.model.amadeus.AmadeusPaxInformation;
+import com.compassites.model.PaxRefInformation;
 import com.compassites.model.traveller.TravellerMasterInfo;
 import models.AmadeusSessionWrapper;
 import org.joda.time.DateTime;
@@ -114,8 +114,9 @@ public class ReIssueHelper {
             pnrResponse.setPnrNumber(pnr);
 
             //Creating Amadeus Pax Reference and Line number here
-            pnrResponse.setAmadeusPaxReference(createAmadeusPaxRefInfo(gdsPNRReply));
+            pnrResponse.setPaxRefInformationList(createAmadeusPaxRefInfo(gdsPNRReply));
             pnrResponse.setSegmentRefMap(AmadeusBookingHelper.getSegmentRefMap(gdsPNRReply, pnr));
+
 
             pnrResponse.setFlightAvailable(true);
             if (gdsPNRReply.getSecurityInformation() != null && gdsPNRReply.getSecurityInformation().getSecondRpInformation() != null) {
@@ -188,7 +189,7 @@ public class ReIssueHelper {
 
             pnrResponse.setPricingInfo(pricingInfo);
             pnrResponse.setCreationOfficeId(gdsPNRReply.getSecurityInformation().getSecondRpInformation().getCreationOfficeId());
-            pnrResponse.setAmadeusPaxReference(createAmadeusPaxRefInfo(gdsPNRReply));
+            pnrResponse.setPaxRefInformationList(createAmadeusPaxRefInfo(gdsPNRReply));
             pnrResponse.setPnrNumber(pnr);
             pnrResponse.setSegmentRefMap(AmadeusBookingHelper.getSegmentRefMap(gdsPNRReply, pnr));
 
@@ -268,15 +269,15 @@ public class ReIssueHelper {
     }
 
     //Creates Amadeus Pax Reference
-    private static List<AmadeusPaxInformation> createAmadeusPaxRefInfo(PNRReply gdsPNRReply) {
+    private static List<PaxRefInformation> createAmadeusPaxRefInfo(PNRReply gdsPNRReply) {
 
-        List<AmadeusPaxInformation> amadeusPaxInformationList = new ArrayList<>();
+        List<PaxRefInformation> paxRefInformationList = new ArrayList<>();
         List<PNRReply.TravellerInfo> travellerInfoList = gdsPNRReply.getTravellerInfo();
         for (PNRReply.TravellerInfo travellerInfo : travellerInfoList) {
-            amadeusPaxInformationList.add(AmadeusBookingHelper.extractPassengerData(travellerInfo));
+            paxRefInformationList.add(AmadeusBookingHelper.extractPassengerData(travellerInfo));
         }
 
-        return amadeusPaxInformationList;
+        return paxRefInformationList;
     }
 
 }

@@ -20,7 +20,17 @@ public class PassengerTax implements Serializable {
 
 	private Map<String, BigDecimal> taxes;
 
-	public int getPassengerCount() {
+    private BigDecimal inrTax;
+
+    public BigDecimal getInrTax() {
+        return inrTax;
+    }
+
+    public void setInrTax(BigDecimal inrTax) {
+        this.inrTax = inrTax;
+    }
+
+    public int getPassengerCount() {
 		return passengerCount;
 	}
 

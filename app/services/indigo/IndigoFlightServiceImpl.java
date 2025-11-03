@@ -206,13 +206,14 @@ public class IndigoFlightServiceImpl implements IndigoFlightService {
     }
 
     @Override
-    public TicketCheckEligibilityRes processFullCancellation(String gdsPNR, String searchOfficeId, String ticketingOfficeId, List<String> ticketIdsList) {
+    public TicketCheckEligibilityRes processFullCancellation(String gdsPNR, String searchOfficeId, String ticketingOfficeId, List<String> ticketIdsList, Boolean isSeamen) {
         logger.info("Indigo process reissue ticket request for PNR: " + gdsPNR);
         try {
             IndigoRefundRequest indigoRefundRequest = new IndigoRefundRequest();
             indigoRefundRequest.setGdsPNR(gdsPNR);
             indigoRefundRequest.setSearchOfficeId(searchOfficeId);
             indigoRefundRequest.setTicketingOfficeId(ticketingOfficeId);
+            indigoRefundRequest.setIsSeamen(isSeamen);
             if(ticketIdsList != null && ticketIdsList.size() > 0){
                 indigoRefundRequest.setTicketIdsList(ticketIdsList);
             }

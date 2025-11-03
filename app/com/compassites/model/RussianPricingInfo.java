@@ -9,7 +9,7 @@ import java.util.List;
 public class RussianPricingInfo {
 
     private BigDecimal equivAmount;
-    private BigDecimal totalAmount;
+    private BigDecimal perPaxTotalAmount;
     private String farePriceTypeCode;
     private String priceCode;
     private String priceName;
@@ -21,6 +21,8 @@ public class RussianPricingInfo {
     private String fareBasis;
     private String originDest;
     private List<String> paxRefId;
+    private BigDecimal totalEquivAmount;
+    private BigDecimal totalPrice;
 
     public BigDecimal getEquivAmount() {
         return equivAmount;
@@ -28,14 +30,6 @@ public class RussianPricingInfo {
 
     public void setEquivAmount(BigDecimal equivAmount) {
         this.equivAmount = equivAmount;
-    }
-
-    public BigDecimal getTotalAmount() {
-        return totalAmount;
-    }
-
-    public void setTotalAmount(BigDecimal totalAmount) {
-        this.totalAmount = totalAmount;
     }
 
     public String getFarePriceTypeCode() {
@@ -124,5 +118,29 @@ public class RussianPricingInfo {
 
     public void setOriginDest(String originDest) {
         this.originDest = originDest;
+    }
+
+    public BigDecimal getPerPaxTotalAmount() {
+        return perPaxTotalAmount;
+    }
+
+    public void setPerPaxTotalAmount(BigDecimal perPaxTotalAmount) {
+        this.perPaxTotalAmount = perPaxTotalAmount;
+    }
+
+    public BigDecimal getTotalPrice() {
+        return totalPrice;
+    }
+
+    public void setTotalPrice(BigDecimal totalPrice) {
+        this.totalPrice = totalPrice;
+    }
+
+    public BigDecimal getTotalEquivAmount() {
+        return totalEquivAmount;
+    }
+
+    public void setTotalEquivAmount(BigDecimal totalEquivAmount) {
+        this.totalEquivAmount = totalEquivAmount;
     }
 }

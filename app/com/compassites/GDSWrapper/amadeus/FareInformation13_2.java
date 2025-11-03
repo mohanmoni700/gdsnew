@@ -19,7 +19,7 @@ import org.joda.time.DateTimeZone;
 public class FareInformation13_2 {
 
     public FareInformativePricingWithoutPNR getPriceInfo(
-            List<Journey> journeys, boolean seamen, int adultCount, int childCount, int infantCount, List<PAXFareDetails> paxFareDetailsList) {
+            List<Journey> journeys, boolean seamen, int adultCount, int childCount, int infantCount, List<PAXFareDetails> paxFareDetailsList, boolean isUpsell) {
 
         FareInformativePricingWithoutPNR fareInfo = new FareInformativePricingWithoutPNR();
 
@@ -123,6 +123,25 @@ public class FareInformation13_2 {
             i++;
         }
         fareInfo.getSegmentGroup().addAll(segmentGroups);
+
+        // Add PTC to PricingOptionGroup
+        FareInformativePricingWithoutPNR.PricingOptionGroup ptcPricingOptionGroup =
+                new FareInformativePricingWithoutPNR.PricingOptionGroup();
+
+        PricingOptionKeyType ptcPricingOptionKey = new PricingOptionKeyType();
+        ptcPricingOptionKey.setPricingOptionKey("PTC");
+
+        ptcPricingOptionGroup.setPricingOptionKey(ptcPricingOptionKey);
+        fareInfo.getPricingOptionGroup().add(ptcPricingOptionGroup);
+
+
+        if(isUpsell) {
+            FareInformativePricingWithoutPNR.PricingOptionGroup pricingOption1 = new FareInformativePricingWithoutPNR.PricingOptionGroup();
+            com.amadeus.xml.tipnrq_13_2_1a.PricingOptionKeyType pricingOptionKey1 = new com.amadeus.xml.tipnrq_13_2_1a.PricingOptionKeyType();
+            pricingOptionKey1.setPricingOptionKey("RLO");
+            pricingOption1.setPricingOptionKey(pricingOptionKey1);
+            fareInfo.getPricingOptionGroup().add(pricingOption1);
+        }
         /*
         List<FareInformativePricingWithoutPNR.PricingOptionGroup> pricingOptionGroup = fareInfo.getPricingOptionGroup();
         FareInformativePricingWithoutPNR.PricingOptionGroup pricingOption = new FareInformativePricingWithoutPNR.PricingOptionGroup();

@@ -13,6 +13,7 @@ public class MnrSearchFareRules implements Serializable {
     private BigDecimal cancellationFee;
     private Boolean isChangeBeforeDepartureAllowed;
     private Boolean isCancellationBeforeDepartureAllowed;
+    private String russianFareRules;
 
     public String getProvider() {
         return provider;
@@ -54,5 +55,11 @@ public class MnrSearchFareRules implements Serializable {
         isCancellationBeforeDepartureAllowed = cancellationBeforeDepartureAllowed;
     }
 
+    public String getRussianFareRules() {
+        return russianFareRules;
+    }
 
+    public void setRussianFareRules(String russianFareRules) {
+        this.russianFareRules = russianFareRules;
+    }
 }

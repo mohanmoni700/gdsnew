@@ -17,6 +17,7 @@ public class Passenger implements Serializable,Cloneable {
     private Integer age;
     private PassengerTypeCode passengerType;
     private String ticketNumber;
+    private String passengerRef;
 
     public String getName() {
         return name;
@@ -48,5 +49,13 @@ public class Passenger implements Serializable,Cloneable {
 
     public void setTicketNumber(String ticketNumber) {
         this.ticketNumber = ticketNumber;
+    }
+
+    public String getPassengerRef() {
+        return passengerRef;
+    }
+
+    public void setPassengerRef(String passengerRef) {
+        this.passengerRef = passengerRef;
     }
 }

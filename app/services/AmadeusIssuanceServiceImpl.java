@@ -16,6 +16,7 @@ import com.compassites.model.traveller.AdditionalInfo;
 import com.compassites.model.traveller.TravellerMasterInfo;
 import com.thoughtworks.xstream.XStream;
 import dto.FareCheckRulesResponse;
+import ennum.ConfigMasterConstants;
 import models.AmadeusSessionWrapper;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
@@ -60,6 +61,8 @@ public class AmadeusIssuanceServiceImpl {
     private AmadeusSourceOfficeService amadeusSourceOfficeService;
     @Autowired
     private IndigoFlightService indigoFlightService;
+    @Autowired
+    private ConfigurationMasterService configurationMasterService;
 
     @Autowired
     public AmadeusIssuanceServiceImpl(AmadeusSessionManager amadeusSessionManager) {
@@ -82,6 +85,12 @@ public class AmadeusIssuanceServiceImpl {
                 }
             }
         }
+        if (itinerary.isSplitTicket()) {
+            String splitTicketOfficeId = configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey());
+            if (splitTicketOfficeId != null) {
+                return splitTicketOfficeId;
+            }
+        }
         return null;
     }
 
@@ -89,6 +98,8 @@ public class AmadeusIssuanceServiceImpl {
         FlightItinerary flightItinerary = issuanceRequest.getFlightItinerary();
         List<IssuanceResponse> issuanceResponses = new ArrayList<>();
         IssuanceResponse amadeusIssuanceResponse = null;
+        IssuanceResponse issuanceResponse = null;
+        boolean isIndigoFlight = false;
         for (Journey journey: flightItinerary.getJourneyList()) {
             if (journey.getProvider().equalsIgnoreCase("Amadeus")) {
                 amadeusIssuanceResponse = priceBookedPNR(issuanceRequest);
@@ -96,9 +107,13 @@ public class AmadeusIssuanceServiceImpl {
                 issuanceResponses.add(amadeusIssuanceResponse);
             }
             if(journey.getProvider().equalsIgnoreCase("Indigo")) {
-                IssuanceResponse issuanceResponse = indigoFlightService.priceBookedPNR(issuanceRequest);
+                issuanceResponse = indigoFlightService.priceBookedPNR(issuanceRequest);
                 issuanceResponses.add(issuanceResponse);
+                isIndigoFlight = true;
             }
+        }
+        if (isIndigoFlight) {
+            amadeusIssuanceResponse.setExpirationDate(issuanceResponse.getExpirationDate());
         }
         return amadeusIssuanceResponse;
     }
@@ -131,9 +146,16 @@ public class AmadeusIssuanceServiceImpl {
         }
 
         boolean isSeamen = issuanceRequest.isSeamen();
-        String pricingOfficeId = isSeamen ? issuanceRequest.getFlightItinerary().getSeamanPricingInformation().getPricingOfficeId() : issuanceRequest.getFlightItinerary().getPricingInformation().getPricingOfficeId();
+        String pricingOfficeId = "";
+        if(issuanceRequest.getFlightItinerary().isSplitTicket()) {
+            pricingOfficeId = configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey());
+        } else {
+            pricingOfficeId = isSeamen ? issuanceRequest.getFlightItinerary().getSeamanPricingInformation().getPricingOfficeId() : issuanceRequest.getFlightItinerary().getPricingInformation().getPricingOfficeId();
+        }
+        //isSeamen ? issuanceRequest.getFlightItinerary().getSeamanPricingInformation().getPricingOfficeId() : issuanceRequest.getFlightItinerary().getPricingInformation().getPricingOfficeId();
         AmadeusSessionWrapper amadeusSessionWrapper = null;
         try {
+            System.out.println("pricingOfficeId "+pricingOfficeId);
             //serviceHandler = new ServiceHandler();
             amadeusSessionWrapper = serviceHandler.logIn(pricingOfficeId, true);
             PNRReply gdsPNRReply = serviceHandler.retrievePNR(issuanceRequest.getGdsPNR(), amadeusSessionWrapper);
@@ -184,10 +206,19 @@ public class AmadeusIssuanceServiceImpl {
             }
 
             List<FareList> pricePNRReplyFareList = new ArrayList<>();
-            boolean isSegmentWisePricing = issuanceRequest.getFlightItinerary().getPricingInformation(issuanceRequest.isSeamen()).isSegmentWisePricing();
-
+            boolean isSegmentWisePricing = false;
+            List<SegmentPricing> segmentPricingList = null;
+            if(issuanceRequest.getFlightItinerary().isSplitTicket()) {
+                int segmentPricingSize = issuanceRequest.getFlightItinerary().getPricingInformation().getSegmentPricingList().size();
+                isSegmentWisePricing = segmentPricingSize >1;
+                if(isSegmentWisePricing) {
+                    segmentPricingList = issuanceRequest.getFlightItinerary().getPricingInformation().getSegmentPricingList();
+                }
+            } else {
+                isSegmentWisePricing = issuanceRequest.getFlightItinerary().getPricingInformation(issuanceRequest.isSeamen()).isSegmentWisePricing();
+                segmentPricingList = issuanceRequest.getFlightItinerary().getPricingInformation(issuanceRequest.isSeamen()).getSegmentPricingList();
+            }
             if (isSegmentWisePricing || isAddedNewSegment) {
-                List<SegmentPricing> segmentPricingList = issuanceRequest.getFlightItinerary().getPricingInformation(issuanceRequest.isSeamen()).getSegmentPricingList();
 
                 Map<String, AirSegmentInformation> segmentsInfo = new HashMap<>();
                 for (Journey journey : issuanceRequest.getFlightItinerary().getJourneys(issuanceRequest.isSeamen())) {
@@ -284,7 +315,8 @@ public class AmadeusIssuanceServiceImpl {
                     List<FareList> tempPricePNRReplyFareList = pricePNRReply.getFareList();
 
                     int numberOfTst = (issuanceRequest.isSeamen()) ? 1 : AmadeusBookingHelper.getNumberOfTST(issuanceRequest.getTravellerList());
-
+                    System.out.println("numberOfTst "+numberOfTst);
+                    System.out.println("numberOfTst1 "+numberOfTst);
                     if (!isOfficeIdError) {
                         for (int i = 0; i < numberOfTst; i++) {
                             pricePNRReplyFareList.add(tempPricePNRReplyFareList.get(i));
@@ -437,6 +469,10 @@ public class AmadeusIssuanceServiceImpl {
                     BigDecimal newLowerPrice = pricingInformation.getTotalPriceValue();
                     issuanceResponse.setNewLowerPrice(newLowerPrice);
                 }
+            }
+            if(issuanceRequest.getFlightItinerary().isSplitTicket()) {
+                issuanceResponse.setIsPriceChanged(false);
+                issuanceResponse.setChangedPriceLow(false);
             }
             issuanceResponse.setSuccess(true);
 

@@ -64,9 +64,6 @@ POST  /processFullRefund            @controllers.Application.processFullRefund()
 POST  /checkPartRefundEligibility   @controllers.Application.checkPartRefundEligibility()
 POST  /processPartialRefund         @controllers.Application.processPartialRefund()
 
-
-
-
 #Ancillary
 #POST /showAdditionalBaggageInfo     @controllers.Application.addAdditionalBaggageRequest()
 POST  /fetchTmxExtraServices              @controllers.Application.fetchTmxExtraServices()
@@ -75,6 +72,7 @@ POST /showMealsInfoStandalone             @controllers.Application.addMealsReque
 POST /getAvailableAncillaryServices            @controllers.Application.getAvailableAncillaryServices()
 POST /confirmAncillaryPayment             @controllers.Application.getAncillaryBaggagePaymentConfirmation()
 POST /confirmFreeMealsAndSeats         @controllers.Application.getFreeMealsAndSeatsConfirmation()
+POST /getPaidAncillaryAtPaxInfoPage    @controllers.Application.getPaidAncillaryAtPaxInfoPage()
 
 #Report
 POST    /openTicketReport   @controllers.Application.openTicketReport()
@@ -95,3 +93,14 @@ POST  /getAvailableRbdUpsell       @controllers.Application.getAvailableRbdUpsel
 POST /getRbdUpgradePrice           @controllers.Application.getRbdUpgradePrice()
 POST /updateFlightItineraryForSelectedRbd   @controllers.Application.updateFlightItineraryForSelectedRbd()
 
+#Queue Management
+POST /getQueueListPnrByOID             @controllers.Application.getQueueListPnrByOID()
+POST /getRetrievePnrDetails            @controllers.Application.getPnrRetrieveDetails()
+POST /queueRemoveItem                  @controllers.Application.removeSpecificPnrFromQueue()
+
+
+#Akbar
+POST /completePaymentAndIssueTicket         @controllers.Application.completePaymentAndIssueTicket()
+
+#Russian
+POST /confirmAndIssueTicket                 @controllers.Application.confirmAndIssueTicket()
