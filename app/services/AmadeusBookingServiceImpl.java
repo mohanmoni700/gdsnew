@@ -1632,9 +1632,13 @@ public class AmadeusBookingServiceImpl implements BookingService {
         String officeId = "";
         if(issuanceRequest.getFlightItinerary().isSplitTicket()) {
             officeId = configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey());
+            if(officeId.equalsIgnoreCase(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId())) {
+                officeId = amadeusSourceOfficeService.getDelhiSourceOffice().getOfficeId();
+            }
         } else {
             officeId = isSeamen ? issuanceRequest.getFlightItinerary().getSeamanPricingInformation().getPricingOfficeId() : issuanceRequest.getFlightItinerary().getPricingInformation().getPricingOfficeId();
         }
+        System.out.println("officeId "+officeId);
         IssuanceResponse issuanceResponse = new IssuanceResponse();
         masterInfo.setSeamen(isSeamen);
 

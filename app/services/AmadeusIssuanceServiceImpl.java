@@ -149,6 +149,9 @@ public class AmadeusIssuanceServiceImpl {
         String pricingOfficeId = "";
         if(issuanceRequest.getFlightItinerary().isSplitTicket()) {
             pricingOfficeId = configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey());
+            if(pricingOfficeId.equalsIgnoreCase(amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId())) {
+                pricingOfficeId = amadeusSourceOfficeService.getDelhiSourceOffice().getOfficeId();
+            }
         } else {
             pricingOfficeId = isSeamen ? issuanceRequest.getFlightItinerary().getSeamanPricingInformation().getPricingOfficeId() : issuanceRequest.getFlightItinerary().getPricingInformation().getPricingOfficeId();
         }

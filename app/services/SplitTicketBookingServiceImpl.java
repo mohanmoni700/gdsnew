@@ -663,6 +663,7 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                 continue;
             }
             try {
+                System.out.println("Start ==================");
                 officeId = getSpecificOfficeIdforAirline(travellerMasterInfo.getItinerary());
                 boolean isDelIdAirline = isDelIdAirlines(travellerMasterInfo);
                 boolean isDelIdSeamen = (isDelIdAirline && travellerMasterInfo.isSeamen()) ? true : false;
@@ -831,7 +832,32 @@ public class SplitTicketBookingServiceImpl implements SplitTicketBookingService 
                         setLastTicketingDate(pricePNRReply, pnrResponse, travellerMasterInfo);
                         String benzyOfficeId = amadeusSourceOfficeService.getBenzySourceOffice().getOfficeId().toString();
                         if (travellerMasterInfo.getSearchSelectOfficeId()!=null && travellerMasterInfo.getSearchSelectOfficeId().equalsIgnoreCase(benzyOfficeId)) {
-                            System.out.println("Benzy Office Id Pricing Error - Fetching Generic Fare Rule");
+                            String splitConfingOID = configurationMasterService.getConfig(ConfigMasterConstants.SPLIT_TICKET_AMADEUS_OFFICE_ID_GLOBAL.getKey());
+                            if(splitConfingOID.equalsIgnoreCase(benzyOfficeId)) {
+                                System.out.println("Benzy Office Id Pricing Error - Fetching Generic Fare Rule else ");
+                                Map<String, String> pnrMap = new HashMap<>();
+                                createSplitTST(pnrResponse, amadeusSessionWrapper, numberOfTst);
+                                if (!pnrResponse.isFlightAvailable()) {
+                                    return pnrResponse;
+                                }
+
+                                gdsPNRReply = serviceHandler.savePNR(amadeusSessionWrapper);
+
+                                String tstRefNo = getPNRNoFromResponse(gdsPNRReply);
+                                System.out.println("PNR " + tstRefNo);
+                                pnr = tstRefNo;
+                                if (isSimultaneousPNR(gdsPNRReply)) {
+                                    System.out.println("SIMULTANEOUS CHANGES TO PNR - USE WRA/RT TO PRINT OR IGNORE");
+                                    logger.debug("SIMULTANEOUS CHANGES TO PNR - USE WRA/RT TO PRINT OR IGNORE");
+                                    createSimultaneousPNR(amadeusSessionWrapper, gdsPNRReply, pnr, travellerMasterInfo, pnrResponse, officeId,
+                                            pricePNRReply, benzyAmadeusSessionWrapper, i, index);
+                                }
+                                isFirstSegmentSell = true;
+                                String segmentKey = createSegmentKey(travellerMasterInfo);
+                                pnrMap.put(segmentKey, tstRefNo);
+                                pnrResponse.setPnrMap(pnrMap);
+                                pnrResponse.setPnrNumber(tstRefNo);
+                            }
                             boolean seamen = travellerMasterInfo.isSeamen();
                             List<HashMap> miniRule = new ArrayList<>();
                             FlightItinerary flightItinerary = travellerMasterInfo.getItinerary();

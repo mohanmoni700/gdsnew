@@ -34,8 +34,12 @@ public class ReIssueServiceWrapper implements ReIssueService {
 
     @Override
     public PNRResponse confirmReissue(ReIssueConfirmationRequest reIssueConfirmationRequest){
-
-        PNRResponse reissuePNRResponse = amadeusReissueService.confirmReIssue(reIssueConfirmationRequest);
+        PNRResponse reissuePNRResponse = null;
+        if(reIssueConfirmationRequest.getOfficeId().equalsIgnoreCase("Indigo") ){
+            reissuePNRResponse = indigoFlightService.confirmReIssue(reIssueConfirmationRequest);
+        } else {
+            reissuePNRResponse = amadeusReissueService.confirmReIssue(reIssueConfirmationRequest);
+        }
 
         return reissuePNRResponse;
     }
