@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class RussianPricingInfo {
@@ -19,10 +20,12 @@ public class RussianPricingInfo {
     private String offerItemID;
     private String offerID;
     private String fareBasis;
-    private String originDest;
+    private List<String> originDest;
     private List<String> paxRefId;
     private BigDecimal totalEquivAmount;
     private BigDecimal totalPrice;
+    private List<Map<String, String>> segmentFareDetails;
+
 
     public BigDecimal getEquivAmount() {
         return equivAmount;
@@ -112,13 +115,6 @@ public class RussianPricingInfo {
         this.fareBasis = fareBasis;
     }
 
-    public String getOriginDest() {
-        return originDest;
-    }
-
-    public void setOriginDest(String originDest) {
-        this.originDest = originDest;
-    }
 
     public BigDecimal getPerPaxTotalAmount() {
         return perPaxTotalAmount;
@@ -142,5 +138,21 @@ public class RussianPricingInfo {
 
     public void setTotalEquivAmount(BigDecimal totalEquivAmount) {
         this.totalEquivAmount = totalEquivAmount;
+    }
+
+    public List<Map<String, String>> getSegmentFareDetails() {
+        return segmentFareDetails;
+    }
+
+    public void setSegmentFareDetails(List<Map<String, String>> segmentFareDetails) {
+        this.segmentFareDetails = segmentFareDetails;
+    }
+
+    public List<String> getOriginDest() {
+        return originDest;
+    }
+
+    public void setOriginDest(List<String> originDest) {
+        this.originDest = originDest;
     }
 }

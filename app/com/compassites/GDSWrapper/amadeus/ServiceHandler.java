@@ -303,6 +303,23 @@ public class ServiceHandler {
         return pricePNRWithBookingClassReply;
     }
 
+
+
+    public com.amadeus.xml.tpcbrr_13_2_1a.FarePricePNRWithBookingClassReply pricePNR_13_2(String carrrierCode, PNRReply pnrReply, boolean isSeamen, boolean isDomesticFlight, FlightItinerary flightItinerary, List<AirSegmentInformation> airSegmentList, boolean isSegmentWisePricing, AmadeusSessionWrapper amadeusSessionWrapper, boolean isAddBooking) {
+
+        amadeusSessionWrapper.incrementSequenceNumber(amadeusSessionWrapper, bindingProvider);
+        logger.debug("Amadeus pricePNR 13.2  called at {}....................Session Id: {}", new Date(), amadeusSessionWrapper.getSessionId());
+
+        com.amadeus.xml.tpcbrq_13_2_1a.FarePricePNRWithBookingClass pricePNRWithBookingClass = new PricePNR13_2().getPNRPricingOption13_2(carrrierCode, pnrReply, isSeamen, isDomesticFlight, flightItinerary, airSegmentList, isSegmentWisePricing, isAddBooking, false, 0);
+        amadeusLogger.debug("FarePricePNRWithBookingClass 13.2 Request {} SessionId: {} ---->\n{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(pricePNRWithBookingClass));
+
+        com.amadeus.xml.tpcbrr_13_2_1a.FarePricePNRWithBookingClassReply pricePNRWithBookingClassReply = mPortType.farePricePNRWithBookingClass(pricePNRWithBookingClass, amadeusSessionWrapper.getmSession(), amadeusSessionWrapper.getTransactionFlowLinkTypeHolder(), amadeusSessionWrapper.getAmaSecurityHostedUser());
+        amadeusLogger.debug("FarePricePNRWithBookingClass 13.2 response {} SessionId: {} ---->\n{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(pricePNRWithBookingClassReply));
+
+        return pricePNRWithBookingClassReply;
+    }
+
+
     //This method creates a TST
     public TicketCreateTSTFromPricingReply createTST(int numberOfTST, AmadeusSessionWrapper amadeusSessionWrapper) {
 

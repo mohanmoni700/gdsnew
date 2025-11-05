@@ -179,7 +179,7 @@ public class PNRResponse implements Serializable  {
 
     private Map<String , String> russianPaxRef;
 
-    private List<String> russianPriceClassList;
+    private List<List<String>> russianPriceClassList;
 
     public String getChildPnr() {
         return childPnr;
@@ -607,11 +607,11 @@ public class PNRResponse implements Serializable  {
 
 
 
-    public List<String> getRussianPriceClassList() {
+    public List<List<String>> getRussianPriceClassList() {
         return russianPriceClassList;
     }
 
-    public void setRussianPriceClassList(List<String> russianPriceClassList) {
+    public void setRussianPriceClassList(List<List<String>> russianPriceClassList) {
         this.russianPriceClassList = russianPriceClassList;
     }
 

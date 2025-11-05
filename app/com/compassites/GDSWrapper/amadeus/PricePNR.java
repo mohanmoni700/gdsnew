@@ -12,6 +12,8 @@ import com.amadeus.xml.tpcbrq_12_4_1a.*;
 import com.compassites.model.AirSegmentInformation;
 import com.compassites.model.FareJourney;
 import com.compassites.model.FlightItinerary;
+
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -221,6 +223,17 @@ public class PricePNR {
             pricepnr.getDiscountInformation().add(discountInfo);
         }
 
+
+         // AddBooking scenario: original booking was Seamen fare, and current AddBooking is Corporate fare
+        if (isAddBooking){
+           if (!isSeamen) {
+               boolean isOriginalBookingSeamen = isOriginalBookingSeamen(pnrReply);
+               if (isOriginalBookingSeamen) {
+                   addChildDiscountIfApplicable(pnrReply, carrierCode, paxSegReference, pricepnr);
+               }
+           }
+        }
+
         return pricepnr;
     }
 
@@ -274,4 +287,119 @@ public class PricePNR {
         return  pricepnr;
 
     }
+
+
+
+    // Check if the original PNR booking was made under Seamen fare type
+    private boolean isOriginalBookingSeamen(PNRReply pnrReply) {
+        if (pnrReply == null || pnrReply.getTravellerInfo() == null) {
+            return false;
+        }
+
+        for (PNRReply.TravellerInfo travellerInfo : pnrReply.getTravellerInfo()) {
+            if (travellerInfo.getPassengerData() != null) {
+                for (PNRReply.TravellerInfo.PassengerData passengerData : travellerInfo.getPassengerData()) {
+                    if (passengerData.getTravellerInformation() != null &&
+                            passengerData.getTravellerInformation().getPassenger() != null &&
+                            !passengerData.getTravellerInformation().getPassenger().isEmpty()) {
+
+                        String passengerType = passengerData.getTravellerInformation()
+                                .getPassenger().get(0).getType();
+
+                        if ("SEA".equalsIgnoreCase(passengerType) || "SC".equalsIgnoreCase(passengerType)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+
+//      Adds child discount if child passengers exist
+    private void addChildDiscountIfApplicable(PNRReply pnrReply, String carrierCode, ReferenceInformationTypeI94605S paxSegReference, FarePricePNRWithBookingClass pricepnr) {
+
+        if (pnrReply == null || pnrReply.getTravellerInfo() == null) {
+            return;
+        }
+
+        // Collect all child passenger reference numbers
+        List<BigInteger> childPassengerRefs = new ArrayList<>();
+
+        for (PNRReply.TravellerInfo travellerInfo : pnrReply.getTravellerInfo()) {
+            if (travellerInfo.getElementManagementPassenger() != null &&
+                    travellerInfo.getElementManagementPassenger().getReference() != null &&
+                    travellerInfo.getPassengerData() != null &&
+                    !travellerInfo.getPassengerData().isEmpty()) {
+
+                for (PNRReply.TravellerInfo.PassengerData passengerData : travellerInfo.getPassengerData()) {
+                    if (passengerData.getTravellerInformation() != null &&
+                            passengerData.getTravellerInformation().getPassenger() != null &&
+                            !passengerData.getTravellerInformation().getPassenger().isEmpty()) {
+
+                        String firstName = passengerData.getTravellerInformation()
+                                .getPassenger().get(0).getFirstName();
+
+                        if (firstName != null) {
+                            String[] nameParts = firstName.trim().split("\\s+");
+                            if (nameParts.length > 1) {
+                                String suffix = nameParts[nameParts.length - 1].toUpperCase();
+
+                                // Detect child name suffixes (MSTR, MISS, MASTER)
+                                if (suffix.equals("MSTR") || suffix.equals("MISS") || suffix.equals("MASTER")) {
+                                    BigInteger passengerRef = travellerInfo.getElementManagementPassenger()
+                                            .getReference().getNumber();
+                                    if (passengerRef != null) {
+                                        childPassengerRefs.add(passengerRef);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (childPassengerRefs.isEmpty()) {
+            return;
+        }
+
+        //   discount  for each child passenger
+        for (BigInteger childRef : childPassengerRefs) {
+            FarePricePNRWithBookingClass.DiscountInformation discountInfo = new FarePricePNRWithBookingClass.DiscountInformation();
+
+            DiscountAndPenaltyInformationTypeI penDisInfo = new DiscountAndPenaltyInformationTypeI();
+            penDisInfo.setInfoQualifier("701");
+
+            DiscountPenaltyMonetaryInformationTypeI penDisData = new DiscountPenaltyMonetaryInformationTypeI();
+            penDisData.setDiscountCode("CH");
+            penDisInfo.getPenDisData().add(penDisData);
+
+            discountInfo.setPenDisInformation(penDisInfo);
+
+            ReferenceInformationTypeI94606S referenceQualifier = new ReferenceInformationTypeI94606S();
+
+            ReferencingDetailsTypeI142223C refChildP = new ReferencingDetailsTypeI142223C();
+            refChildP.setRefQualifier("P");
+            refChildP.setRefNumber(childRef);
+            referenceQualifier.getRefDetails().add(refChildP);
+
+            if (paxSegReference != null && paxSegReference.getRefDetails() != null) {
+                for (ReferencingDetailsTypeI142222C segRef : paxSegReference.getRefDetails()) {
+                    if ("S".equals(segRef.getRefQualifier())) {
+                        ReferencingDetailsTypeI142223C refChildS = new ReferencingDetailsTypeI142223C();
+                        refChildS.setRefQualifier("S");
+                        refChildS.setRefNumber(segRef.getRefNumber());
+                        referenceQualifier.getRefDetails().add(refChildS);
+                    }
+                }
+            }
+
+            discountInfo.setReferenceQualifier(referenceQualifier);
+
+            pricepnr.getDiscountInformation().add(discountInfo);
+        }
+    }
+
 }
