@@ -155,4 +155,28 @@ public class RussianPricingInfo {
     public void setOriginDest(List<String> originDest) {
         this.originDest = originDest;
     }
+
+    public BigDecimal getPerPaxTotalAmount() {
+        return perPaxTotalAmount;
+    }
+
+    public void setPerPaxTotalAmount(BigDecimal perPaxTotalAmount) {
+        this.perPaxTotalAmount = perPaxTotalAmount;
+    }
+
+    public BigDecimal getTotalPrice() {
+        return totalPrice;
+    }
+
+    public void setTotalPrice(BigDecimal totalPrice) {
+        this.totalPrice = totalPrice;
+    }
+
+    public BigDecimal getTotalEquivAmount() {
+        return totalEquivAmount;
+    }
+
+    public void setTotalEquivAmount(BigDecimal totalEquivAmount) {
+        this.totalEquivAmount = totalEquivAmount;
+    }
 }
