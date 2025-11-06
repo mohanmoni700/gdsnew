@@ -1,5 +1,8 @@
 package services.QueueManagement;
 
+import com.amadeus.xml.pnracc_14_1_1a.LongFreeTextType;
+import com.amadeus.xml.pnracc_14_1_1a.PNRReply;
+import com.amadeus.xml.pnracc_14_1_1a.SpecialRequirementsTypeDetailsTypeI;
 import com.amadeus.xml.qdqlrr_11_1_1a.*;
 import com.amadeus.xml.quqmdr_03_1_1a.ApplicationErrorInformationTypeI;
 import com.amadeus.xml.quqmdr_03_1_1a.FreeTextInformationType;
@@ -10,16 +13,17 @@ import dto.queueManagement.*;
 import models.AmadeusSessionWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class QueueManagementServiceImpl implements QueueManagementService{
+
+    @Autowired
+    private ServiceHandler serviceHandler;
 
     private static final Logger logger = LoggerFactory.getLogger("gds");
 
@@ -270,6 +274,105 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
         return removePnrFromQueueRes;
     }
+
+    @Override
+    public PNRReply outwardMessageRequest (List<OutwardMessageDTO> outwardMessageList,String gdsPnr) {
+
+        try {
+            AmadeusSessionWrapper amadeusSessionWrapper = serviceHandler.logIn(true);
+            serviceHandler.retrievePNR(gdsPnr, amadeusSessionWrapper);
+            PNRReply pnrReply = serviceHandler.addOutwardMessagesToPNR(outwardMessageList, amadeusSessionWrapper);
+            serviceHandler.savePNR(amadeusSessionWrapper);
+            return pnrReply;
+        } catch (Exception e) {
+            logger.debug("Error while adding outward messages to Gds Pnr {} ", e.getMessage(), e);
+            return null;
+        }
+
+    }
+
+    @Override
+    public List<OutwardMessageDTO> markOutwardMessagesStatus(List<OutwardMessageDTO> outwardMessageList, PNRReply pnrReply) {
+        try {
+            if (outwardMessageList == null || outwardMessageList.isEmpty() || pnrReply == null) {
+                return Collections.emptyList();
+            }
+
+            List<OutwardMessageDTO> resultList = new ArrayList<>();
+            List<PNRReply.DataElementsMaster.DataElementsIndiv> indivList =
+                    pnrReply.getDataElementsMaster() != null ? pnrReply.getDataElementsMaster().getDataElementsIndiv() : Collections.emptyList();
+
+            for (OutwardMessageDTO dto : outwardMessageList) {
+                OutwardMessageDTO messageDTO = new OutwardMessageDTO();
+                messageDTO.setPaxRef(dto.getPaxRef());
+                messageDTO.setPaxName(dto.getPaxName());
+                messageDTO.setSegment(dto.getSegment());
+                messageDTO.setSegmentRef(dto.getSegmentRef());
+                messageDTO.setRemarkType(dto.getRemarkType());
+                messageDTO.setCarrierCode(dto.getCarrierCode());
+                messageDTO.setFreeText(dto.getFreeText());
+
+                String dtoText = dto.getFreeText() != null ? String.join("\n", dto.getFreeText()).trim().toUpperCase() : "";
+                boolean found = false;
+                boolean isError = false;
+
+                for (PNRReply.DataElementsMaster.DataElementsIndiv indiv : indivList) {
+                    String segmentName = indiv.getElementManagementData() != null ? indiv.getElementManagementData().getSegmentName() : null;
+                    if (segmentName == null) continue;
+
+                    if ("SSR".equalsIgnoreCase(segmentName) && indiv.getServiceRequest() != null && indiv.getServiceRequest().getSsr() != null) {
+                        SpecialRequirementsTypeDetailsTypeI ssr = indiv.getServiceRequest().getSsr();
+                        if (ssr.getFreeText() != null) {
+                            String indivText = String.join("\n", ssr.getFreeText()).trim().toUpperCase();
+                            if (indivText.contains(dtoText)) {
+                                found = true;
+                                if (indiv.getElementManagementData() != null && "ERR".equalsIgnoreCase(indiv.getElementManagementData().getStatus())) {
+                                    isError = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if ("OS".equalsIgnoreCase(segmentName) && indiv.getOtherDataFreetext() != null) {
+                        for (LongFreeTextType ft : indiv.getOtherDataFreetext()) {
+                            String indivText = ft.getLongFreetext() != null ? ft.getLongFreetext().trim().toUpperCase() : "";
+                            if (indivText.contains(dtoText)) {
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (("RM".equalsIgnoreCase(segmentName) || "RC".equalsIgnoreCase(segmentName) || "RX".equalsIgnoreCase(segmentName))
+                            && indiv.getMiscellaneousRemarks() != null
+                            && indiv.getMiscellaneousRemarks().getRemarks() != null
+                            && indiv.getMiscellaneousRemarks().getRemarks().getFreetext() != null) {
+
+                        String indivText = String.join("\n", indiv.getMiscellaneousRemarks().getRemarks().getFreetext()).trim().toUpperCase();
+                        if (indivText.contains(dtoText)) {
+                            found = true;
+                        }
+                    }
+                }
+
+                if (isError) {
+                    messageDTO.setStatus("ERROR");
+                } else {
+                    messageDTO.setStatus(found ? "SUCCESS" : "FAILED");
+                }
+
+                resultList.add(messageDTO);
+            }
+
+            return resultList;
+
+        } catch (Exception e) {
+            logger.error("Error marking outward messages status", e);
+            return Collections.emptyList();
+        }
+    }
+
 
 
 }

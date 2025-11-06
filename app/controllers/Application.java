@@ -1021,6 +1021,34 @@ public class Application {
         }
     }
 
+    public Result sendOutwardMessage() {
+
+        try {
+
+            JsonNode json = request().body().asJson();
+            if (json == null) {
+                logger.warn("Not a valid json");
+                return badRequest("Invalid or missing JSON body");
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode outwardNode = json.findPath("outwardMessageList");
+            List<OutwardMessageDTO> outwardMessageList = mapper.convertValue(outwardNode, new TypeReference<List<OutwardMessageDTO>>() {});
+
+            String gdsPnr = json.findPath("gdsPNR").asText();
+
+            PNRReply pnrReply = queueManagementService.outwardMessageRequest(outwardMessageList,gdsPnr);
+
+            List<OutwardMessageDTO> updatedList = queueManagementService.markOutwardMessagesStatus(outwardMessageList, pnrReply);
+
+            return ok(Json.toJson(updatedList));
+        } catch (Exception e) {
+            logger.error("Error in sending outward message", e);
+            return internalServerError("Failed to process request");
+        }
+
+    }
+
     public Result home() {
         return ok("GDS Service running.....");
     }

@@ -70,6 +70,7 @@ import com.compassites.model.traveller.TravellerMasterInfo;
 import com.thoughtworks.xstream.XStream;
 import dto.AmadeusConvertCurrencyRQ;
 import dto.OpenTicketDTO;
+import dto.queueManagement.OutwardMessageDTO;
 import dto.queueManagement.QueueListIndividualReqDTO;
 import dto.queueManagement.RemovePnrFomQueueDTO;
 import dto.reissue.ReIssueConfirmationRequest;
@@ -349,6 +350,7 @@ public class ServiceHandler {
 
         return createTSTFromPricingReply;
     }
+
 
     //This method saves a PNR
     public PNRReply savePNR(AmadeusSessionWrapper amadeusSessionWrapper) {
@@ -1045,6 +1047,19 @@ public class ServiceHandler {
         return pnrReply;
     }
 
+    public PNRReply addOutwardMessagesToPNR(List<OutwardMessageDTO> outwardMessageList,AmadeusSessionWrapper amadeusSessionWrapper) {
+
+        amadeusSessionWrapper.incrementSequenceNumber(amadeusSessionWrapper, bindingProvider);
+        logger.debug("Amadeus Add Outward messages to PNR called   at {}....................Session Id: {}", new Date(), amadeusSessionWrapper.getSessionId());
+
+        PNRAddMultiElements pnrAddMultiElements = new PNRAddMultiElementsh().addOutwardMessagesToGdsPnr(outwardMessageList);
+        amadeusLogger.debug("PNRAddMultiElements Request -- Add outward message to PNR {} SessionId: {} ---->\n{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(pnrAddMultiElements));
+
+        PNRReply pnrReply = mPortType.pnrAddMultiElements(pnrAddMultiElements, amadeusSessionWrapper.getmSession(), amadeusSessionWrapper.getTransactionFlowLinkTypeHolder(), amadeusSessionWrapper.getAmaSecurityHostedUser());
+        amadeusLogger.debug("PNRReply -- Add outward message to PNR {} SessionId: {} ---->\n{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(pnrReply));
+
+        return pnrReply;
+    }
 
     // Lists available rbd for the requested flight itinerary
     public AirMultiAvailabilityReply getAirMultiAvailability(AmadeusSessionWrapper amadeusSessionWrapper, FlightItinerary flightItinerary, boolean isSeamen) {

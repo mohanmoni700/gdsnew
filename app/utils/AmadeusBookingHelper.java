@@ -55,6 +55,8 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static services.AmadeusFlightSearch.onlyDateFormat;
+
 
 /**
  * Created by Yaseen on 18-12-2014.
@@ -3674,32 +3676,49 @@ public class AmadeusBookingHelper {
                                             if ("AIR".equalsIgnoreCase(element.getSegmentName())) {
                                                 ReferencingDetailsType127526C reference = element.getReference();
 
-                                                if (reference != null && reference.getNumber() != null &&
-                                                        segment.getAmadeusSegmentRefNo().equals(reference.getNumber().toString())) {
+                                                if (reference != null && reference.getNumber() != null && segment.getAmadeusSegmentRefNo().equals(reference.getNumber().toString())) {
 
                                                     TravelProductInformationTypeI185722S travelProduct = itinerary.getTravelProduct();
                                                     if (travelProduct != null) {
                                                         ProductDateTimeTypeI260466C product = travelProduct.getProduct();
-                                                        if (product != null && product.getDepDate() != null && product.getDepTime() != null &&
-                                                                product.getArrDate() != null && product.getArrTime() != null) {
+
+                                                        if (product != null && product.getDepDate() != null && product.getDepTime() != null
+                                                                && product.getArrDate() != null && product.getArrTime() != null) {
+
+                                                            LocationTypeI192814C boardPointDetail = travelProduct.getBoardpointDetail();
+                                                            if (boardPointDetail != null && boardPointDetail.getCityCode() != null) {
+                                                                segment.setFromLocation(boardPointDetail.getCityCode());
+                                                            }
+
+                                                            LocationTypeI192814C offPointDetail = travelProduct.getOffpointDetail();
+                                                            if (offPointDetail != null && offPointDetail.getCityCode() != null) {
+                                                                segment.setToLocation(offPointDetail.getCityCode());
+                                                            }
+
+                                                            // Retrieve airports (with timezone info) from Redis
+                                                            Airport fromAirport = Airport.getAirportByIataCode(segment.getFromLocation());
+                                                            Airport toAirport = Airport.getAirportByIataCode(segment.getToLocation());
 
                                                             final String DATE_FORMAT = "ddMMyyHHmm";
-                                                            DateTimeFormatter fmt = DateTimeFormat.forPattern(DATE_FORMAT);
-                                                            DateTime depDateTime = fmt.parseDateTime(product.getDepDate() + product.getDepTime());
-                                                            DateTime arrDateTime = fmt.parseDateTime(product.getArrDate() + product.getArrTime());
+                                                            DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern(DATE_FORMAT);
 
-                                                            segment.setDepartureTime(depDateTime.toString(fmt));
-                                                            segment.setArrivalTime(arrDateTime.toString(fmt));
-                                                        }
+                                                            // Parse departure time using FROM airport's timezone
+                                                            DateTimeZone fromZone = DateTimeZone.forID(fromAirport.getTime_zone());
+                                                            DateTime departureDateTime = dateTimeFormatter.withZone(fromZone).parseDateTime(product.getDepDate() + product.getDepTime());
 
-                                                        LocationTypeI192814C boardPointDetail = travelProduct.getBoardpointDetail();
-                                                        if (boardPointDetail != null && boardPointDetail.getCityCode() != null) {
-                                                            segment.setFromLocation(boardPointDetail.getCityCode());
-                                                        }
+                                                            // Parse arrival time using TO airport's timezone
+                                                            DateTimeZone toZone = DateTimeZone.forID(toAirport.getTime_zone());
+                                                            DateTime arrivalDateTime = dateTimeFormatter.withZone(toZone).parseDateTime(product.getArrDate() + product.getArrTime());
 
-                                                        LocationTypeI192814C offPointDetail = travelProduct.getOffpointDetail();
-                                                        if (offPointDetail != null && offPointDetail.getCityCode() != null) {
-                                                            segment.setToLocation(offPointDetail.getCityCode());
+                                                            // Set values in segment (date and formatted strings)
+                                                            segment.setDepartureDate(departureDateTime.toDate());
+                                                            segment.setArrivalDate(arrivalDateTime.toDate());
+                                                            segment.setDepartureTime(departureDateTime.toString());
+                                                            segment.setArrivalTime(arrivalDateTime.toString());
+                                                            segment.setOnlyDepartureDate(onlyDateFormat(departureDateTime.toString()));
+                                                            segment.setOnlyArrivalDate(onlyDateFormat(arrivalDateTime.toString()));
+                                                            segment.setFromAirport(fromAirport);
+                                                            segment.setToAirport(toAirport);
                                                         }
 
                                                         CompanyIdentificationTypeI192810C company = travelProduct.getCompanyDetail();
@@ -3804,12 +3823,12 @@ public class AmadeusBookingHelper {
                                                 if (!Objects.equals(airSegmentInformation.getEquipment(), dbSegment.getEquipment())) {
                                                     changedFields.add("equipment");
                                                 }
-//                                                if (!Objects.equals(airSegmentInformation.getCabinClass(), dbSegment.getBookingClass())) {
-//                                                    changedFields.add("rbd");
-//                                                }
-//                                                if (!Objects.equals(airSegmentInformation.getCarrierCode(), dbSegment.getCarrierCode())) {
-//                                                    changedFields.add("carrierCode");
-//                                                }
+                                                if (!Objects.equals(airSegmentInformation.getCabinClass(), dbSegment.getBookingClass())) {
+                                                    changedFields.add("rbd");
+                                                }
+                                                if (!Objects.equals(airSegmentInformation.getCarrierCode(), dbSegment.getCarrierCode())) {
+                                                    changedFields.add("carrierCode");
+                                                }
                                                 break;
                                             }
                                         }

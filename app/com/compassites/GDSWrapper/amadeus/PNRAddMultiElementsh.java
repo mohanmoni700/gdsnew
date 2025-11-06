@@ -8,6 +8,7 @@ import com.amadeus.xml.pnrxcl_14_1_1a.ReservationControlInformationType;
 import com.compassites.constants.AmadeusConstants;
 import com.compassites.model.*;
 import com.compassites.model.traveller.*;
+import dto.queueManagement.OutwardMessageDTO;
 import models.NationalityDao;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -1694,5 +1695,143 @@ System.out.println("**********getMultiElements**********"+travellerMasterInfo.ge
         fullName = fstName+midName+lstName;
         return fullName.trim();
     }
+
+    public PNRAddMultiElements addOutwardMessagesToGdsPnr(List<OutwardMessageDTO> outwardMessageList) {
+        try {
+            PNRAddMultiElements element = new PNRAddMultiElements();
+            OptionalPNRActionsType pnrActions = new OptionalPNRActionsType();
+            pnrActions.getOptionCode().add(new BigInteger("0"));
+            element.setPnrActions(pnrActions);
+
+            // data elements
+            PNRAddMultiElements.DataElementsMaster dataElementsMaster = new PNRAddMultiElements.DataElementsMaster();
+            dataElementsMaster.setMarker1(new DummySegmentTypeI());
+            List<PNRAddMultiElements.DataElementsMaster.DataElementsIndiv> dataElementsList = new ArrayList<>();
+
+            if (outwardMessageList != null && !outwardMessageList.isEmpty()) {
+                for (OutwardMessageDTO outwardMessage : outwardMessageList) {
+
+                    if (outwardMessage == null || outwardMessage.getRemarkType() == null) {
+                        continue;
+                    }
+
+                    String remarkType = outwardMessage.getRemarkType().trim().toUpperCase();
+
+                    // Create new indiv and segment for each remark
+                    PNRAddMultiElements.DataElementsMaster.DataElementsIndiv indiv = new PNRAddMultiElements.DataElementsMaster.DataElementsIndiv();
+                    ElementManagementSegmentType elementManagementData = new ElementManagementSegmentType();
+                    indiv.setElementManagementData(elementManagementData);
+
+                    switch (remarkType) {
+
+                        case "RC":
+                        case "RM":
+                        case "RX": {
+                            elementManagementData.setSegmentName(remarkType);
+
+                            ReferencingDetailsType reference = new ReferencingDetailsType();
+                            reference.setQualifier("OT");
+                            reference.setNumber("13");
+                            elementManagementData.setReference(reference);
+
+                            MiscellaneousRemarksType miscRemarks = new MiscellaneousRemarksType();
+                            MiscellaneousRemarkType remark = new MiscellaneousRemarkType();
+                            remark.setType(remarkType);
+
+                            if (outwardMessage.getFreeText() != null && !outwardMessage.getFreeText().isEmpty()) {
+                                remark.setFreetext(outwardMessage.getFreeText().get(0));
+                            }
+
+
+                            miscRemarks.setRemarks(remark);
+                            indiv.setMiscellaneousRemark(miscRemarks);
+                            dataElementsList.add(indiv);
+                            break;
+                        }
+
+                        case "OSI": {
+                            elementManagementData.setSegmentName("OS");
+
+                            LongFreeTextType freeTextData = new LongFreeTextType();
+                            FreeTextQualificationType textDetail = new FreeTextQualificationType();
+                            textDetail.setSubjectQualifier("3");
+                            textDetail.setType("P27");
+
+                            String companyId = (outwardMessage.getCarrierCode() != null && !outwardMessage.getCarrierCode().isEmpty()) ? outwardMessage.getCarrierCode() : "YY";
+                            textDetail.setCompanyId(companyId);
+                            freeTextData.setFreetextDetail(textDetail);
+
+                            if (outwardMessage.getFreeText() != null && !outwardMessage.getFreeText().isEmpty()) {
+                                freeTextData.setLongFreetext(outwardMessage.getFreeText().get(0));
+                            }
+
+                            indiv.setFreetextData(freeTextData);
+                            dataElementsList.add(indiv);
+                            break;
+                        }
+
+                        case "SSR/SVCS": {
+                            elementManagementData.setSegmentName("SSR");
+
+                            ReferencingDetailsType reference = new ReferencingDetailsType();
+                            reference.setQualifier("OT");
+                            reference.setNumber("13");
+                            elementManagementData.setReference(reference);
+
+                            if (outwardMessage.getFreeText() != null && !outwardMessage.getFreeText().isEmpty()) {
+                                SpecialRequirementsDetailsTypeI serviceRequest = new SpecialRequirementsDetailsTypeI();
+                                SpecialRequirementsTypeDetailsTypeI ssr = new SpecialRequirementsTypeDetailsTypeI();
+
+                                if (outwardMessage.getCarrierCode() != null) {
+                                    ssr.setCompanyId(outwardMessage.getCarrierCode());
+                                }
+                                ssr.getFreetext().addAll(outwardMessage.getFreeText());
+                                serviceRequest.setSsr(ssr);
+                                indiv.setServiceRequest(serviceRequest);
+                            }
+
+                            if (outwardMessage.getPaxRef() != null || outwardMessage.getSegmentRef() != null) {
+                                ReferenceInfoType refInfo = new ReferenceInfoType();
+                                List<ReferencingDetailsType> refList = refInfo.getReference();
+
+                                if (outwardMessage.getPaxRef() != null) {
+                                    ReferencingDetailsType paxRef = new ReferencingDetailsType();
+                                    paxRef.setQualifier("PT");
+                                    paxRef.setNumber(outwardMessage.getPaxRef());
+                                    refList.add(paxRef);
+                                }
+
+                                if (outwardMessage.getSegmentRef() != null) {
+                                    ReferencingDetailsType segRef = new ReferencingDetailsType();
+                                    segRef.setQualifier("ST");
+                                    segRef.setNumber(outwardMessage.getSegmentRef());
+                                    refList.add(segRef);
+                                }
+
+                                indiv.setReferenceForDataElement(refInfo);
+                            }
+
+                            dataElementsList.add(indiv);
+                            break;
+                        }
+
+                        default:
+                            break;
+                    }
+
+                }
+            }
+
+            // Attach all indivs to master
+            dataElementsMaster.getDataElementsIndiv().addAll(dataElementsList);
+            element.setDataElementsMaster(dataElementsMaster);
+
+            return element;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error while building outward messages", e);
+        }
+    }
+
 
 }

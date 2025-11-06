@@ -97,6 +97,7 @@ POST /updateFlightItineraryForSelectedRbd   @controllers.Application.updateFligh
 POST /getQueueListPnrByOID             @controllers.Application.getQueueListPnrByOID()
 POST /getRetrievePnrDetails            @controllers.Application.getPnrRetrieveDetails()
 POST /queueRemoveItem                  @controllers.Application.removeSpecificPnrFromQueue()
+POST /sendOutwardMessage               @controllers.Application.sendOutwardMessage()
 
 
 #Akbar
