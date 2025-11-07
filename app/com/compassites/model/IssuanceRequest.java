@@ -78,6 +78,9 @@ public class IssuanceRequest implements Serializable{
 
     Map<String, Long> ODPaxRefTicketSegmentIdMap;
 
+    private String nationality;
+
+
     public Map<String, Long> getODPaxRefTicketSegmentIdMap() {
         return ODPaxRefTicketSegmentIdMap;
     }
@@ -423,5 +426,13 @@ public class IssuanceRequest implements Serializable{
 
     public void setRussianPaxRef(Map<String, String> russianPaxRef) {
         this.russianPaxRef = russianPaxRef;
+    }
+
+    public String getNationality() {
+        return nationality;
+    }
+
+    public void setNationality(String nationality) {
+        this.nationality = nationality;
     }
 }

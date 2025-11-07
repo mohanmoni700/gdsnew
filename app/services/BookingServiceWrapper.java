@@ -143,6 +143,8 @@ public class BookingServiceWrapper {
 			pnrResponse = traveloMatrixBookingService.priceChangePNR(travellerMasterInfo);
 		} else if (AkbarConstants.provider.equalsIgnoreCase(provider)) {
             pnrResponse = akbarTravelsApIEntry.generatePnr(travellerMasterInfo);
+        } else if(RussianConstants.provider.equalsIgnoreCase(provider)) {
+            pnrResponse = russianFlightService.generatePNR(travellerMasterInfo);
         }
         return pnrResponse;
 	}
