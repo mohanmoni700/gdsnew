@@ -11,46 +11,55 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+    steps:   
 
-      - name: Set up JDK 8
-        uses: actions/setup-java@v3
-        with:
-          java-version: '8'
-          distribution: 'temurin'
-          cache: 'sbt'
+    - uses: actions/checkout@v3
 
-      - name: Clear sbt & cache directories (safe)
-        run: |
-          set -euo pipefail
-          rm -rf ~/.sbt/boot ~/.sbt/launchers ~/.ivy2/cache ~/.coursier || true
-          rm -rf project/target project/project/target project/boot || true
+    - name: Set up JDK 8
+      uses: actions/setup-java@v3
+      with:
+        java-version: '8'
+        distribution: 'temurin'
+        cache: 'sbt'
 
-      - name: Force sbt 0.13.17 for CI (override project setting)
-        run: |
-          set -euo pipefail
-          mkdir -p project
-          echo "sbt.version=0.13.17" > project/build.properties
-          echo "----- project/build.properties -----"
-          cat project/build.properties
+    - name: Clear sbt & cache directories (safe)
+      run: |
+        set -euo pipefail
+        rm -rf ~/.sbt/boot ~/.sbt/launchers ~/.ivy2/cache ~/.coursier || true
+        rm -rf project/target project/project/target project/boot || true
 
-      - name: Install sbt (sbt-extras launcher)
-        run: |
-          set -euo pipefail
-          curl -sL https://git.io/sbt-extras > sbt
-          chmod +x sbt
-          sudo mv sbt /usr/local/bin/sbt
-          sbt --version || true
+    - name: Force sbt 0.13.17 for CI (override project setting)
+      run: |
+        set -euo pipefail
+        mkdir -p project
+        echo "sbt.version=0.13.17" > project/build.properties
+        cat project/build.properties
 
-      - name: Verify environment
-        run: |
-          set -euo pipefail
-          echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"
-          pwd
-          which sbt || true
-          sbt sbtVersion || true
-          java -version
+    - name: Install sbt (sbt-extras launcher, robust)
+      run: |
+        set -euo pipefail
+        curl -fsSL https://raw.githubusercontent.com/paulp/sbt-extras/master/sbt -o sbt
+        if head -n 1 sbt | grep -iqE '^#!'; then
+          echo "Downloaded sbt-extras script OK"
+        else
+          echo "Downloaded sbt-extras is invalid - aborting"
+          head -n 40 sbt || true
+          exit 1
+        fi
+        chmod +x sbt
+        sudo mv sbt /usr/local/bin/sbt
+        ls -la /usr/local/bin/sbt
+        head -n 3 /usr/local/bin/sbt
+        sbt --version || true
 
-      - name: compile code
-        run: sbt -no-colors dist
+    - name: Verify environment
+      run: |
+        set -euo pipefail
+        echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"
+        pwd
+        which sbt || true
+        sbt sbtVersion || true
+        java -version
+
+    - name: compile code
+      run: sbt -no-colors dist
