@@ -1,79 +1,29 @@
-name: Build with Activator
+name: GDS Deploy to ASG
 
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
-    env:
-      JAVA_HOME_8_X64: /usr/lib/jvm/java-8-openjdk-amd64
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Set up JDK 8
+      - name: Set up Java
         uses: actions/setup-java@v3
         with:
-          distribution: temurin
           java-version: '8'
+          distribution: 'temurin'
 
-      - name: Cache Ivy and SBT
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.ivy2/cache
-            ~/.ivy2/local
-            ~/.sbt
-            ~/.coursier
-          key: ${{ runner.os }}-activator-ivy-${{ hashFiles('**/build.sbt','**/project/build.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-activator-ivy-
-
-      - name: Ensure activator executable (if present)
+      - name: Install sbt
         run: |
-          if [ -f ./activator ]; then
-            chmod +x ./activator || true
-            echo "Using ./activator"
-          else
-            echo "./activator not found in repo root"
-          fi
-
-      - name: Show Java version
-        run: java -version
-
-      - name: Run Activator build (try local binary, fallback to jar)
-        run: |
-          set -e
-          if [ -x ./activator ]; then
-            echo "Running ./activator clean compile test dist"
-            ./activator clean compile test dist
-          elif [ -f ./activator-launch-*.jar ]; then
-            echo "Running activator via jar"
-            java -jar activator-launch-1.2.12.jar clean compile test dist
-          else
-            echo "No activator binary or activator-launch jar found. Failing."
-            exit 1
-          fi
-
-      - name: List dist / target dir
-        run: |
-          echo "Listing possible artifact locations..."
-          ls -la
-          if [ -d target/universal ]; then ls -la target/universal || true; fi
-          if [ -d dist ]; then ls -la dist || true; fi
-
-      - name: Upload build artifact (dist)
-        uses: actions/upload-artifact@v4
-        with:
-          name: activator-dist
-          path: |
-            target/universal/*.zip
-            dist/*.zip
-            target/*.zip
+          echo "deb [signed-by=/usr/share/keyrings/sbt-keyring.gpg] https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list
+          curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x99E82A75642AC823" | gpg --dearmor | sudo tee /usr/share/keyrings/sbt-keyring.gpg > /dev/null
+          sudo apt-get update || true
+          sudo apt-get install sbt -y || true
+      - name: Compile GDS app
+        run: sbt dist
