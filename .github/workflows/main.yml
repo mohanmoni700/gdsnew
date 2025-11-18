@@ -4,62 +4,29 @@ on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
+  
 
 permissions:
   contents: read
 
 jobs:
   build:
+
     runs-on: ubuntu-latest
-    steps:   
-
+    steps:
     - uses: actions/checkout@v3
-
     - name: Set up JDK 8
       uses: actions/setup-java@v3
       with:
         java-version: '8'
         distribution: 'temurin'
         cache: 'sbt'
-
-    - name: Clear sbt & cache directories (safe)
+    - name: Install sbt
       run: |
-        set -euo pipefail
-        rm -rf ~/.sbt/boot ~/.sbt/launchers ~/.ivy2/cache ~/.coursier || true
-        rm -rf project/target project/project/target project/boot || true
-
-    - name: Force sbt 0.13.17 for CI (override project setting)
-      run: |
-        set -euo pipefail
-        mkdir -p project
-        echo "sbt.version=0.13.17" > project/build.properties
-        cat project/build.properties
-
-    - name: Install sbt (sbt-extras launcher, robust)
-      run: |
-        set -euo pipefail
-        curl -fsSL https://raw.githubusercontent.com/paulp/sbt-extras/master/sbt -o sbt
-        if head -n 1 sbt | grep -iqE '^#!'; then
-          echo "Downloaded sbt-extras script OK"
-        else
-          echo "Downloaded sbt-extras is invalid - aborting"
-          head -n 40 sbt || true
-          exit 1
-        fi
-        chmod +x sbt
-        sudo mv sbt /usr/local/bin/sbt
-        ls -la /usr/local/bin/sbt
-        head -n 3 /usr/local/bin/sbt
-        sbt --version || true
-
-    - name: Verify environment
-      run: |
-        set -euo pipefail
-        echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"
-        pwd
-        which sbt || true
-        sbt sbtVersion || true
-        java -version
-
+       echo "deb [signed-by=/usr/share/keyrings/sbt-keyring.gpg] https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list
+       curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x99E82A75642AC823" | gpg --dearmor | sudo tee /usr/share/keyrings/sbt-keyring.gpg > /dev/null
+       sudo apt-get update || true
+       sudo apt-get install sbt -y || true
+       
     - name: compile code
-      run: sbt -no-colors dist
+      run: sbt dist
