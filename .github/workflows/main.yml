@@ -13,104 +13,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up JDK 8
+      - name: Set up Java 8
         uses: actions/setup-java@v3
         with:
           java-version: '8'
           distribution: 'temurin'
           cache: 'sbt'
 
-      - name: Install sbt (apt with Coursier fallback, robust)
+      - name: Clear sbt caches (optional, safe)
+        run: rm -rf ~/.sbt/boot ~/.sbt/launchers ~/.ivy2/cache ~/.coursier || true
+
+      - name: Install sbt (sbt-extras)
         run: |
           set -euo pipefail
-          echo "Step: install prerequisites"
-          sudo apt-get update
-          sudo apt-get install -y curl ca-certificates gnupg dirmngr apt-transport-https
+          curl -sL https://git.io/sbt-extras > sbt
+          chmod +x sbt
+          sudo mv sbt /usr/local/bin/sbt
+          sbt --version
 
-          echo "Step: add sbt apt repo"
-          echo "deb [signed-by=/usr/share/keyrings/sbt-archive-keyring.gpg] https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list
-
-          echo "Step: import sbt GPG key (retrying)"
-          RETRIES=3
-          for i in $(seq 1 $RETRIES); do
-            if curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x99E82A75642AC823" \
-               | gpg --dearmor | sudo tee /usr/share/keyrings/sbt-archive-keyring.gpg > /dev/null; then
-              echo "Imported sbt key."
-              break
-            else
-              echo "Failed to fetch key (attempt $i/$RETRIES). Retrying in 5s..."
-              sleep 5
-            fi
-          done
-
-          echo "Step: apt-get update (with retry)"
-          for i in 1 2 3; do
-            if sudo apt-get update; then
-              break
-            else
-              echo "apt-get update failed (attempt $i). Retrying in 5s..."
-              sleep 5
-            fi
-          done
-
-          echo "Step: try apt-based sbt install"
-          if sudo apt-get install -y sbt; then
-            echo "sbt installed via apt."
-            sbt sbtVersion
-            exit 0
-          else
-            echo "apt-based sbt install failed. Will fallback to Coursier installer."
-          fi
-
-          # -------- Coursier fallback ----------
-          echo "Step: try install coursier binary (primary release) with retries"
-          CS_URL_PRIMARY="https://github.com/coursier/coursier/releases/download/v2.1.25-M1/cs-x86_64-pc-linux.gz"
-          CS_URL_FALLBACK="https://github.com/coursier/coursier/releases/download/v2.1.16/cs-x86_64-pc-linux.gz"
-
-          TMPDIR=$(mktemp -d)
-          cd "$TMPDIR"
-
-          DOWNLOAD_OK=0
-          for url in "$CS_URL_PRIMARY" "$CS_URL_FALLBACK"; do
-            echo "Attempting download from $url"
-            for attempt in 1 2 3; do
-              if curl --fail --location --retry 5 --retry-delay 5 -o cs.gz "$url"; then
-                echo "Downloaded cs.gz from $url"
-                DOWNLOAD_OK=1
-                break
-              else
-                echo "Download attempt $attempt failed for $url; retrying..."
-                sleep 3
-              fi
-            done
-            if [ "$DOWNLOAD_OK" -eq 1 ]; then
-              break
-            fi
-          done
-
-          if [ "$DOWNLOAD_OK" -ne 1 ]; then
-            echo "Failed to download Coursier binary from primary and fallback URLs."
-            exit 1
-          fi
-
-          echo "Unpacking coursier and installing"
-          gunzip -c cs.gz > cs
-          chmod +x cs
-          ./cs --help >/dev/null || true
-
-          echo "Running coursier setup"
-          ./cs setup --yes
-
-          echo "$HOME/.local/share/coursier/bin" >> $GITHUB_PATH
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-          echo "Installing sbt via coursier"
-          ~/.local/share/coursier/bin/cs install sbt || ~/.local/bin/cs install sbt
-
-          echo "Verify sbt"
-          sbt sbtVersion
+      - name: Verify env
+        run: |
+          which sbt
+          sbt --version
+          java -version
+          cat project/build.properties || true
 
       - name: compile code
         run: sbt dist
