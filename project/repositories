@@ -1,0 +1,4 @@
+[repositories]
+local
+maven-central: https://repo1.maven.org/maven2/
+ivy-home: file:${user.home}/.ivy2/local
