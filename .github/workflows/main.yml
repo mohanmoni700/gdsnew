@@ -23,12 +23,54 @@ jobs:
         cache: 'sbt'
     - name: Install sbt
       run: |
-        echo "Installing sbt..."
-        echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list
-        curl -fsSL https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x99e82a75642ac823 | gpg --dearmor | sudo tee /usr/share/keyrings/sbt-archive-keyring.gpg > /dev/null
-        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 99E82A75642AC823
+        set -euo pipefail
+        echo "Installing prerequisites..."
         sudo apt-get update
-        sudo apt-get install sbt -y
+        sudo apt-get install -y curl ca-certificates gnupg dirmngr apt-transport-https
+
+        echo "Adding Scala sbt apt repository and key..."
+        # Add repo list
+        echo "deb [signed-by=/usr/share/keyrings/sbt-archive-keyring.gpg] https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list
+
+        # Fetch key from keyserver and dearmor (retry a few times because keyservers can be flaky)
+        RETRIES=3
+        for i in $(seq 1 $RETRIES); do
+          if curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x99E82A75642AC823" | gpg --dearmor | sudo tee /usr/share/keyrings/sbt-archive-keyring.gpg > /dev/null; then
+            echo "Imported sbt key."
+            break
+          else
+            echo "Failed to fetch key (attempt $i/$RETRIES). Retrying in 5s..."
+            sleep 5
+          fi
+        done
+
+        echo "Updating apt and installing sbt (with retries)..."
+        # Retry apt-get update in case of transient repo errors
+        for i in 1 2 3; do
+          if sudo apt-get update; then
+            break
+          else
+            echo "apt-get update failed (attempt $i/3), retrying in 5s..."
+            sleep 5
+          fi
+        done
+
+        # Try to install sbt; if apt-based install fails, we'll fallback to coursier
+        if sudo apt-get install -y sbt; then
+          echo "sbt installed via apt."
+        else
+          echo "apt-based sbt install failed — falling back to Coursier installer."
+          # Install coursier and set up sbt
+          curl -fLo cs https://git.io/coursier-cli-linux
+          chmod +x cs
+          ./cs setup --yes
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          ./cs install sbt
+        fi
+
+        echo "Verifying sbt..."
+        sbt sbtVersion
+
        
     - name: compile code
       run: sbt dist
