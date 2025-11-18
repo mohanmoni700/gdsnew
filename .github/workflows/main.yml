@@ -7,35 +7,35 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Java 8
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '8'
 
-      - name: Give activator permissions
+      - name: Make activator launcher executable
         run: chmod +x activator-launch-1.2.12.jar
 
-      - name: Run sbt compile using activator launcher
+      - name: Compile (using Activator launcher as sbt)
         run: |
-          java -Xmx2G -Xms512M \
+          java -Xms512M -Xmx2G \
           -jar activator-launch-1.2.12.jar \
           compile
 
       - name: Package (dist)
         run: |
-          java -Xmx2G -Xms512M \
+          java -Xms512M -Xmx2G \
           -jar activator-launch-1.2.12.jar \
           dist
 
-      - name: Upload built artifact
-        uses: actions/upload-artifact@v3
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
         with:
           name: play23-dist
           path: target/universal/*.zip
