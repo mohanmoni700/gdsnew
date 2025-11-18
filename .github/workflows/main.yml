@@ -1,89 +1,79 @@
-name: Play 2.3 Build
+name: Build with Activator
 
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      JAVA_HOME_8_X64: /usr/lib/jvm/java-8-openjdk-amd64
+
     steps:
-      - name: Checkout source
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 8
-        uses: actions/setup-java@v4
+      - name: Set up JDK 8
+        uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '8'
 
-      - name: Prepare Ivy2 Cache
-        run: mkdir -p ./.ivy2/local
+      - name: Cache Ivy and SBT
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.ivy2/cache
+            ~/.ivy2/local
+            ~/.sbt
+            ~/.coursier
+          key: ${{ runner.os }}-activator-ivy-${{ hashFiles('**/build.sbt','**/project/build.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-activator-ivy-
 
-      - name: Ensure activator launcher exists (debug)
+      - name: Ensure activator executable (if present)
         run: |
-          echo "Listing repo root (for debugging)"
-          ls -lah
-          if [ ! -f activator-launch-1.2.12.jar ]; then
-            echo "ERROR: activator-launch-1.2.12.jar not found at repo root" >&2
-            exit 2
+          if [ -f ./activator ]; then
+            chmod +x ./activator || true
+            echo "Using ./activator"
+          else
+            echo "./activator not found in repo root"
           fi
-          echo "activator-launcher present."
 
-      - name: Seed local Ivy cache with activator-launcher
+      - name: Show Java version
+        run: java -version
+
+      - name: Run Activator build (try local binary, fallback to jar)
         run: |
           set -e
-          # create the required local ivy layout for com.typesafe.activator:activator-launcher:1.2.12
-          base="./.ivy2/local/com.typesafe.activator/activator-launcher/1.2.12"
-          mkdir -p "${base}/jars" "${base}/ivys"
+          if [ -x ./activator ]; then
+            echo "Running ./activator clean compile test dist"
+            ./activator clean compile test dist
+          elif [ -f ./activator-launch-*.jar ]; then
+            echo "Running activator via jar"
+            java -jar activator-launch-1.2.12.jar clean compile test dist
+          else
+            echo "No activator binary or activator-launch jar found. Failing."
+            exit 1
+          fi
 
-          # copy the provided activator launcher into the local ivy cache
-          cp activator-launch-1.2.12.jar "${base}/jars/activator-launcher.jar"
-
-          # write a minimal ivy.xml so ivy considers the artifact present
-          cat > "${base}/ivys/ivy.xml" <<'IVY'
-<ivy-module version="2.0">
-  <info organisation="com.typesafe.activator" module="activator-launcher" revision="1.2.12" status="release"/>
-  <publications>
-    <artifact name="activator-launcher" type="jar" ext="jar"/>
-  </publications>
-</ivy-module>
-IVY
-
-          echo "Seeded local ivy cache:"
-          ls -l "${base}"
-
-      - name: Compile (Play 2.3) using local activator
+      - name: List dist / target dir
         run: |
-          chmod +x activator-launch-1.2.12.jar
-          java \
-            -Dactivator.home=. \
-            -Dsbt.ivy.home=./.ivy2 \
-            -Dsbt.override.build.repos=true \
-            -Dsbt.repository.config=./project/repositories \
-            -Doffline=true \
-            -Xms512M -Xmx2G \
-            -jar activator-launch-1.2.12.jar \
-            compile
+          echo "Listing possible artifact locations..."
+          ls -la
+          if [ -d target/universal ]; then ls -la target/universal || true; fi
+          if [ -d dist ]; then ls -la dist || true; fi
 
-      - name: Create Play Dist Package
-        run: |
-          java \
-            -Dactivator.home=. \
-            -Dsbt.ivy.home=./.ivy2 \
-            -Dsbt.override.build.repos=true \
-            -Dsbt.repository.config=./project/repositories \
-            -Doffline=true \
-            -Xms512M -Xmx2G \
-            -jar activator-launch-1.2.12.jar \
-            dist
-
-      - name: List target/universal (debug)
-        run: ls -lah target/universal || true
-
-      - name: Upload Play Distribution
+      - name: Upload build artifact (dist)
         uses: actions/upload-artifact@v4
         with:
-          name: play23-dist
-          path: target/universal/*.zip
+          name: activator-dist
+          path: |
+            target/universal/*.zip
+            dist/*.zip
+            target/*.zip
