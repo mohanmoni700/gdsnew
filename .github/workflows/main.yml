@@ -8,7 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -19,12 +18,43 @@ jobs:
           distribution: 'temurin'
           java-version: '8'
 
-      # Create local ivy2 folder so sbt can write here
       - name: Prepare Ivy2 Cache
-        run: mkdir -p ./.ivy2
+        run: mkdir -p ./.ivy2/local
 
-      # Compile the Play 2.3 application using the local activator launcher
-      - name: Compile (Play 2.3)
+      - name: Ensure activator launcher exists (debug)
+        run: |
+          echo "Listing repo root (for debugging)"
+          ls -lah
+          if [ ! -f activator-launch-1.2.12.jar ]; then
+            echo "ERROR: activator-launch-1.2.12.jar not found at repo root" >&2
+            exit 2
+          fi
+          echo "activator-launcher present."
+
+      - name: Seed local Ivy cache with activator-launcher
+        run: |
+          set -e
+          # create the required local ivy layout for com.typesafe.activator:activator-launcher:1.2.12
+          base="./.ivy2/local/com.typesafe.activator/activator-launcher/1.2.12"
+          mkdir -p "${base}/jars" "${base}/ivys"
+
+          # copy the provided activator launcher into the local ivy cache
+          cp activator-launch-1.2.12.jar "${base}/jars/activator-launcher.jar"
+
+          # write a minimal ivy.xml so ivy considers the artifact present
+          cat > "${base}/ivys/ivy.xml" <<'IVY'
+<ivy-module version="2.0">
+  <info organisation="com.typesafe.activator" module="activator-launcher" revision="1.2.12" status="release"/>
+  <publications>
+    <artifact name="activator-launcher" type="jar" ext="jar"/>
+  </publications>
+</ivy-module>
+IVY
+
+          echo "Seeded local ivy cache:"
+          ls -l "${base}"
+
+      - name: Compile (Play 2.3) using local activator
         run: |
           chmod +x activator-launch-1.2.12.jar
           java \
@@ -37,7 +67,6 @@ jobs:
             -jar activator-launch-1.2.12.jar \
             compile
 
-      # Create distribution package
       - name: Create Play Dist Package
         run: |
           java \
@@ -50,7 +79,9 @@ jobs:
             -jar activator-launch-1.2.12.jar \
             dist
 
-      # Upload the ZIP artifact produced by the Play dist task
+      - name: List target/universal (debug)
+        run: ls -lah target/universal || true
+
       - name: Upload Play Distribution
         uses: actions/upload-artifact@v4
         with:
