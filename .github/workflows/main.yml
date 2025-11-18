@@ -4,73 +4,113 @@ on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
-  
 
 permissions:
   contents: read
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up JDK 8
-      uses: actions/setup-java@v3
-      with:
-        java-version: '8'
-        distribution: 'temurin'
-        cache: 'sbt'
-    - name: Install sbt
-      run: |
-        set -euo pipefail
-        echo "Installing prerequisites..."
-        sudo apt-get update
-        sudo apt-get install -y curl ca-certificates gnupg dirmngr apt-transport-https
+      - uses: actions/checkout@v3
 
-        echo "Adding Scala sbt apt repository and key..."
-        # Add repo list
-        echo "deb [signed-by=/usr/share/keyrings/sbt-archive-keyring.gpg] https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list
+      - name: Set up JDK 8
+        uses: actions/setup-java@v3
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+          cache: 'sbt'
 
-        # Fetch key from keyserver and dearmor (retry a few times because keyservers can be flaky)
-        RETRIES=3
-        for i in $(seq 1 $RETRIES); do
-          if curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x99E82A75642AC823" | gpg --dearmor | sudo tee /usr/share/keyrings/sbt-archive-keyring.gpg > /dev/null; then
-            echo "Imported sbt key."
-            break
+      - name: Install sbt (apt with Coursier fallback, robust)
+        run: |
+          set -euo pipefail
+          echo "Step: install prerequisites"
+          sudo apt-get update
+          sudo apt-get install -y curl ca-certificates gnupg dirmngr apt-transport-https
+
+          echo "Step: add sbt apt repo"
+          echo "deb [signed-by=/usr/share/keyrings/sbt-archive-keyring.gpg] https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list
+
+          echo "Step: import sbt GPG key (retrying)"
+          RETRIES=3
+          for i in $(seq 1 $RETRIES); do
+            if curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x99E82A75642AC823" \
+               | gpg --dearmor | sudo tee /usr/share/keyrings/sbt-archive-keyring.gpg > /dev/null; then
+              echo "Imported sbt key."
+              break
+            else
+              echo "Failed to fetch key (attempt $i/$RETRIES). Retrying in 5s..."
+              sleep 5
+            fi
+          done
+
+          echo "Step: apt-get update (with retry)"
+          for i in 1 2 3; do
+            if sudo apt-get update; then
+              break
+            else
+              echo "apt-get update failed (attempt $i). Retrying in 5s..."
+              sleep 5
+            fi
+          done
+
+          echo "Step: try apt-based sbt install"
+          if sudo apt-get install -y sbt; then
+            echo "sbt installed via apt."
+            sbt sbtVersion
+            exit 0
           else
-            echo "Failed to fetch key (attempt $i/$RETRIES). Retrying in 5s..."
-            sleep 5
+            echo "apt-based sbt install failed. Will fallback to Coursier installer."
           fi
-        done
 
-        echo "Updating apt and installing sbt (with retries)..."
-        # Retry apt-get update in case of transient repo errors
-        for i in 1 2 3; do
-          if sudo apt-get update; then
-            break
-          else
-            echo "apt-get update failed (attempt $i/3), retrying in 5s..."
-            sleep 5
+          # -------- Coursier fallback ----------
+          echo "Step: try install coursier binary (primary release) with retries"
+          CS_URL_PRIMARY="https://github.com/coursier/coursier/releases/download/v2.1.25-M1/cs-x86_64-pc-linux.gz"
+          CS_URL_FALLBACK="https://github.com/coursier/coursier/releases/download/v2.1.16/cs-x86_64-pc-linux.gz"
+
+          TMPDIR=$(mktemp -d)
+          cd "$TMPDIR"
+
+          DOWNLOAD_OK=0
+          for url in "$CS_URL_PRIMARY" "$CS_URL_FALLBACK"; do
+            echo "Attempting download from $url"
+            for attempt in 1 2 3; do
+              if curl --fail --location --retry 5 --retry-delay 5 -o cs.gz "$url"; then
+                echo "Downloaded cs.gz from $url"
+                DOWNLOAD_OK=1
+                break
+              else
+                echo "Download attempt $attempt failed for $url; retrying..."
+                sleep 3
+              fi
+            done
+            if [ "$DOWNLOAD_OK" -eq 1 ]; then
+              break
+            fi
+          done
+
+          if [ "$DOWNLOAD_OK" -ne 1 ]; then
+            echo "Failed to download Coursier binary from primary and fallback URLs."
+            exit 1
           fi
-        done
 
-        # Try to install sbt; if apt-based install fails, we'll fallback to coursier
-        if sudo apt-get install -y sbt; then
-          echo "sbt installed via apt."
-        else
-          echo "apt-based sbt install failed — falling back to Coursier installer."
-          # Install coursier and set up sbt
-          curl -fLo cs https://git.io/coursier-cli-linux
+          echo "Unpacking coursier and installing"
+          gunzip -c cs.gz > cs
           chmod +x cs
+          ./cs --help >/dev/null || true
+
+          echo "Running coursier setup"
           ./cs setup --yes
+
+          echo "$HOME/.local/share/coursier/bin" >> $GITHUB_PATH
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-          ./cs install sbt
-        fi
 
-        echo "Verifying sbt..."
-        sbt sbtVersion
+          echo "Installing sbt via coursier"
+          ~/.local/share/coursier/bin/cs install sbt || ~/.local/bin/cs install sbt
 
-       
-    - name: compile code
-      run: sbt dist
+          echo "Verify sbt"
+          sbt sbtVersion
+
+      - name: compile code
+        run: sbt dist
