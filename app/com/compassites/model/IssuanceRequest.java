@@ -80,6 +80,9 @@ public class IssuanceRequest implements Serializable{
 
     private String nationality;
 
+    private String russianPaymentTimeout;
+
+
 
     public Map<String, Long> getODPaxRefTicketSegmentIdMap() {
         return ODPaxRefTicketSegmentIdMap;
@@ -434,5 +437,13 @@ public class IssuanceRequest implements Serializable{
 
     public void setNationality(String nationality) {
         this.nationality = nationality;
+    }
+
+    public String getRussianPaymentTimeout() {
+        return russianPaymentTimeout;
+    }
+
+    public void setRussianPaymentTimeout(String russianPaymentTimeout) {
+        this.russianPaymentTimeout = russianPaymentTimeout;
     }
 }

@@ -2379,6 +2379,32 @@ public class AmadeusBookingServiceImpl implements BookingService {
             if (pnrResponse.isTicketPresent()) {
                 try {
                     attachTicketNumbersFromPNR(gdsPNRReply, masterInfo);
+                    Set<String> isTicketContainSet = new HashSet<String>();
+                    if (gdsPNRReply.getDataElementsMaster()!= null && gdsPNRReply.getDataElementsMaster().getDataElementsIndiv() != null) {
+                        for (DataElementsIndiv isticket : gdsPNRReply.getDataElementsMaster().getDataElementsIndiv()) {
+                            if (isticket.getElementManagementData() != null && isticket.getElementManagementData().getSegmentName() != null) {
+                                String isTicketIssued = isticket.getElementManagementData().getSegmentName();
+                                if (isTicketIssued != null) {
+                                    isTicketContainSet.add(isTicketIssued);
+                                }
+
+                                if (isticket.getTicketElement() != null) {
+                                    TicketElementType ticketElementType = isticket.getTicketElement();
+                                    if (ticketElementType != null) {
+                                        TicketInformationType ticketInformationType = ticketElementType.getTicket();
+                                        if (ticketInformationType != null) {
+                                            String ticketingOfficeId = ticketInformationType.getOfficeId();
+                                            if (ticketingOfficeId != null) {
+                                                masterInfo.setTicketingOfficeId(ticketingOfficeId);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    amadeusBookingHelper.getTicketEligibilityFromTicketDisplayTSTReply(ticketDisplayTSTReply, masterInfo);
                 } catch (Exception e) {
                     logger.debug("Error while attaching ticket numbers from PNR: ", e);
                 }

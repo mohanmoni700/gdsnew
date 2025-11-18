@@ -120,6 +120,9 @@ public class Journey implements Serializable
 
     private String operatingCarrier;
 
+    private String journeyDuration;
+
+
     public String getMarketingCarrier() {
         return marketingCarrier;
     }
@@ -332,5 +335,13 @@ public class Journey implements Serializable
 
     public void setOrderId(int orderId) {
         this.orderId = orderId;
+    }
+
+    public String getJourneyDuration() {
+        return journeyDuration;
+    }
+
+    public void setJourneyDuration(String journeyDuration) {
+        this.journeyDuration = journeyDuration;
     }
 }

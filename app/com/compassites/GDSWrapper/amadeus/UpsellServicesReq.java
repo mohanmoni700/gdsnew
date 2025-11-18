@@ -49,7 +49,8 @@ public class UpsellServicesReq {
 
                         // Setting availabilityProductInfo with origin details
                         ProductDateTimeType availabilityDetails = new ProductDateTimeType();
-                        availabilityDetails.setDepartureDate(firstSegment.getFromDate());
+//                        availabilityDetails.setDepartureDate(firstSegment.getFromDate());
+                        availabilityDetails.setDepartureDate(OffsetDateTime.parse(firstSegment.getDepartureTime()).format(DateTimeFormatter.ofPattern("ddMMyy")));
                         availabilityDetails.setDepartureTime(OffsetDateTime.parse(firstSegment.getDepartureTime()).format(DateTimeFormatter.ofPattern("HHmm")));
                         availabilityProductInfo.getAvailabilityDetails().add(availabilityDetails);
 

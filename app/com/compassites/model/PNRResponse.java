@@ -65,6 +65,9 @@ public class PNRResponse implements Serializable  {
 
     private BigDecimal akbarNetAmt;
 
+    private String russianPaymentTimeout;
+
+
     public BigDecimal getAkbarNetAmt() {
         return akbarNetAmt;
     }
@@ -629,5 +632,13 @@ public class PNRResponse implements Serializable  {
 
     public void setRussianPaxRef(Map<String, String> russianPaxRef) {
         this.russianPaxRef = russianPaxRef;
+    }
+
+    public String getRussianPaymentTimeout() {
+        return russianPaymentTimeout;
+    }
+
+    public void setRussianPaymentTimeout(String russianPaymentTimeout) {
+        this.russianPaymentTimeout = russianPaymentTimeout;
     }
 }
