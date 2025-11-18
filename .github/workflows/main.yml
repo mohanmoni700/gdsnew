@@ -19,22 +19,39 @@ jobs:
           distribution: 'temurin'
           java-version: '8'
 
-      - name: Make activator launcher executable
-        run: chmod +x activator-launch-1.2.12.jar
+      # Create local ivy2 folder so sbt can write here
+      - name: Prepare Ivy2 Cache
+        run: mkdir -p ./.ivy2
 
-      - name: Compile with Play 2.3 using activator launcher
+      # Compile the Play 2.3 application using the local activator launcher
+      - name: Compile (Play 2.3)
         run: |
-          java -Xms512M -Xmx2G \
+          chmod +x activator-launch-1.2.12.jar
+          java \
+            -Dactivator.home=. \
+            -Dsbt.ivy.home=./.ivy2 \
+            -Dsbt.override.build.repos=true \
+            -Dsbt.repository.config=./project/repositories \
+            -Doffline=true \
+            -Xms512M -Xmx2G \
             -jar activator-launch-1.2.12.jar \
             compile
 
-      - name: Package Play distribution
+      # Create distribution package
+      - name: Create Play Dist Package
         run: |
-          java -Xms512M -Xmx2G \
+          java \
+            -Dactivator.home=. \
+            -Dsbt.ivy.home=./.ivy2 \
+            -Dsbt.override.build.repos=true \
+            -Dsbt.repository.config=./project/repositories \
+            -Doffline=true \
+            -Xms512M -Xmx2G \
             -jar activator-launch-1.2.12.jar \
             dist
 
-      - name: Upload Play dist artifact
+      # Upload the ZIP artifact produced by the Play dist task
+      - name: Upload Play Distribution
         uses: actions/upload-artifact@v4
         with:
           name: play23-dist
